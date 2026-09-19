@@ -4,21 +4,46 @@ import { createGame, maxImpostors, citizensWin, type Game } from './game';
 import { categories } from './words';
 
 const root = document.querySelector<HTMLDivElement>('#app')!;
-const avatars = ['😎', '👽', '🦊', '👻', '🐸', '🤖', '🐼', '🦄', '🐙', '🔥', '🐱', '🕵️'];
+const avatars = [
+  ['avatar-01', 'Cometa'], ['avatar-02', 'Ribelle'], ['avatar-03', 'Lampo'], ['avatar-04', 'Nebbia'],
+  ['avatar-05', 'Braciere'], ['avatar-06', 'Marea'], ['avatar-07', 'Cobalto'], ['avatar-08', 'Corallo'],
+  ['avatar-09', 'Guscio'], ['avatar-10', 'Piuma'], ['avatar-11', 'Ombra'], ['avatar-12', 'Pixel'],
+  ['avatar-13', 'Zefiro'], ['avatar-14', 'Radice'], ['avatar-15', 'Prisma'], ['avatar-16', 'Turbine'],
+] as const;
+type AvatarId = typeof avatars[number][0];
+const legacyAvatarMap: Record<string, AvatarId> = {
+  '😎': 'avatar-01', '👽': 'avatar-02', '🦊': 'avatar-03', '👻': 'avatar-04',
+  '🐸': 'avatar-05', '🤖': 'avatar-06', '🐼': 'avatar-07', '🦄': 'avatar-08',
+  '🐙': 'avatar-09', '🔥': 'avatar-10', '🐱': 'avatar-11', '🕵️': 'avatar-12',
+};
 let data: AppData<Game> = { players: [], selectedIds: [], settings: { impostors: 1, category: 'all' }, activeGame: null, language: 'it' };
 let revealed = false;
 let busy = false;
 let storageReady = false;
 let error = '';
-let dialog: 'player' | 'rules' | 'exit' | null = null;
-let chosenAvatar = avatars[0];
+let dialog: 'player' | 'rules' | 'exit' | 'delete' | null = null;
+let chosenAvatar: AvatarId = avatars[0][0];
 let draftName = '';
+let editingPlayerId: string | null = null;
+let deletingPlayerId: string | null = null;
 const t = (it: string, en: string) => data.language === 'it' ? it : en;
 const escape = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 const categoryName = (c: string) => ({ all: t('Tutte le categorie', 'All categories'), Cibo: t('Cibo', 'Food'), Luoghi: t('Luoghi', 'Places'), Oggetti: t('Oggetti', 'Objects'), Animali: t('Animali', 'Animals'), Sport: 'Sport', Cinema: t('Cinema', 'Movies') }[c] ?? c);
 const selected = () => data.players.filter(p => data.selectedIds.includes(p.id));
-const button = (action: string, label: string, cls = 'primary', disabled = false) => `<button class="${cls}" data-action="${action}" ${disabled || busy ? 'disabled' : ''}>${label}</button>`;
-const avatar = (p: Player, size = '') => `<span class="avatar ${size}" aria-hidden="true">${escape(p.avatar)}</span>`;
+const button = (action: string, label: string, cls = 'primary', disabled = false, ariaLabel = '') => `<button class="${cls}" data-action="${action}" ${ariaLabel ? `aria-label="${escape(ariaLabel)}"` : ''} ${disabled || busy ? 'disabled' : ''}>${label}</button>`;
+const resolveAvatar = (value: string): AvatarId => avatars.find(([id]) => id === value)?.[0] ?? legacyAvatarMap[value] ?? avatars[0][0];
+const avatar = (p: Player, size = '') => {
+  const id = resolveAvatar(p.avatar);
+  const index = avatars.findIndex(([avatarId]) => avatarId === id);
+  const position = `${(index % 4) * 100 / 3}% ${Math.floor(index / 4) * 100 / 3}%`;
+  return `<span class="avatar ${size}" style="--avatar-position:${position}" aria-hidden="true"></span>`;
+};
+
+function playerCard(p: Player): string {
+  const included = data.selectedIds.includes(p.id);
+  const disabled = busy || !storageReady;
+  return `<div class="player-row"><button class="player ${included ? 'selected' : ''}" data-player="${p.id}" aria-pressed="${included}" ${disabled ? 'disabled' : ''}>${avatar(p)}<span>${escape(p.name)}</span><span class="check" aria-hidden="true">${included ? '✓' : '+'}</span></button><div class="player-actions"><button type="button" class="player-action" data-action="edit-player" data-player="${p.id}" aria-label="${t('Modifica', 'Edit')} ${escape(p.name)}" ${disabled ? 'disabled' : ''}>${t('Modifica', 'Edit')}</button><button type="button" class="player-action danger" data-action="delete-player" data-player="${p.id}" aria-label="${t('Elimina', 'Delete')} ${escape(p.name)}" ${disabled ? 'disabled' : ''}>${t('Elimina', 'Delete')}</button></div></div>`;
+}
 
 async function change(update: (next: AppData<Game>) => void): Promise<void> {
   if (busy || !storageReady) return;
@@ -39,7 +64,7 @@ function setup(): string {
   const count = data.selectedIds.length;
   return `<section class="cover"><div class="cover-art"></div><div class="cover-copy"><span class="eyebrow">${t('IL PARTY GAME DEI SOSPETTI', 'THE SUSPICIOUS PARTY GAME')}</span><h1>${t('Fidati di<br><em>nessuno.</em>', 'Trust<br><em>no one.</em>')}</h1><p>${t('Una parola. Qualche bugia.<br>Un solo telefono.', 'One word. A few lies.<br>One phone.')}</p></div><span class="cover-tag">${t('TRA AMICI, SENZA FILTRI.', 'GOOD FRIENDS. GREAT LIARS.')}</span><span class="spark">✦</span></section>
   <section class="setup"><div class="section-heading"><div><span class="eyebrow">${t('RADUNA LA TUA CREW', 'ROUND UP YOUR CREW')}</span><h2>${t('Chi gioca?', "Who's playing?")}</h2></div><span class="count">${count}/20</span></div>
-  ${data.players.length ? `<p class="helper">${t('Tocca un personaggio per includerlo o escluderlo.', 'Tap a character to include or exclude them.')}</p><div class="players">${data.players.map(p => `<button class="player ${data.selectedIds.includes(p.id) ? 'selected' : ''}" data-player="${p.id}" aria-pressed="${data.selectedIds.includes(p.id)}" ${busy ? 'disabled' : ''}>${avatar(p)}<span>${escape(p.name)}</span><span class="check" aria-hidden="true">${data.selectedIds.includes(p.id) ? '✓' : '+'}</span></button>`).join('')}</div>` : `<div class="empty"><span>✦</span><p>${t('Ogni faccia nasconde qualcosa.<br>Aggiungi il primo giocatore.', 'Every face hides something.<br>Add your first player.')}</p></div>`}
+  ${data.players.length ? `<p class="helper">${t('Tocca un personaggio per includerlo o escluderlo. Usa Modifica o Elimina per gestirlo.', 'Tap a character to include or exclude them. Use Edit or Delete to manage them.')}</p><div class="players">${data.players.map(playerCard).join('')}</div>` : `<div class="empty"><span>✦</span><p>${t('Ogni faccia nasconde qualcosa.<br>Aggiungi il primo giocatore.', 'Every face hides something.<br>Add your first player.')}</p></div>`}
   ${button('add', `＋ ${t('Nuovo personaggio', 'New character')}`, 'secondary', !storageReady)}
   <div class="setting"><div><strong>${t('Impostori', 'Impostors')}</strong><small>${t('Conoscono solo un indizio.', 'They only get a hint.')}</small></div><div class="stepper"><button data-action="minus" aria-label="${t('Meno impostori', 'Fewer impostors')}" ${data.settings.impostors <= 1 || busy ? 'disabled' : ''}>−</button><b>${data.settings.impostors}</b><button data-action="plus" aria-label="${t('Più impostori', 'More impostors')}" ${data.settings.impostors >= maxImpostors(count) || busy ? 'disabled' : ''}>+</button></div></div>
   <div class="setting"><label for="category"><strong>${t('Il mazzo', 'The deck')}</strong><small>${t('120 parole, infinite facce sospette.', '120 words. Endless suspicious looks.')}</small></label><select id="category" ${busy ? 'disabled' : ''}>${['all', ...categories].map(c => `<option value="${c}" ${data.settings.category === c ? 'selected' : ''}>${categoryName(c)}</option>`).join('')}</select></div>
@@ -55,7 +80,7 @@ function gameView(g: Game): string {
   const top = `<div class="round-top">${button('exit', '←', 'icon-btn')}<span class="eyebrow">${phaseLabel}</span><span class="count">${g.players.length} ${t('amici', 'friends')}</span></div>`;
   if (g.phase === 'reveal') {
     const impostor = g.impostorIds.includes(p.id);
-    return `<div class="game-logo"><span>${t("TROVA L’", "FIND THE")}</span><strong>${t("IMPOSTORE", "IMPOSTOR")}</strong></div>${top}<div class="progress" aria-label="${g.revealIndex + 1}/${g.players.length}">${g.players.map((_, i) => `<i class="${i <= g.revealIndex ? 'done' : ''}"></i>`).join('')}</div><section class="game-screen"><p class="eyebrow">${t('PASSA IL TELEFONO A', 'PASS THE PHONE TO')}</p><h1 class="player-title">${escape(p.name)}</h1><p class="helper">${t('Gli altri guardano altrove. Niente sbirciate.', 'Everyone else looks away. No peeking.')}</p><div id="secret-card" class="secret-card ${revealed ? 'flipped' : ''}">${revealed ? `<span class="role-label">${impostor ? t('SEI UN IMPOSTORE', 'YOU ARE AN IMPOSTOR') : t('SEI DELLA CREW', 'YOU ARE CREW')}</span><span class="secret-icon">${impostor ? '🕵️' : '🤫'}</span><p>${impostor ? t('Il tuo indizio è', 'Your hint is') : t('La parola segreta è', 'The secret word is')}</p><h2 class="secret-word">${escape(impostor ? hint : gameWord)}</h2><p class="helper">${impostor ? t('Mimetizzati. Ascolta. Inventati qualcosa.', 'Blend in. Listen. Make something up.') : t('Fatti capire, senza dire troppo.', 'Be clear, without giving too much away.')}</p>` : `<div class="character-art" aria-hidden="true"></div><span class="character-badge">${escape(p.avatar)}</span><div class="swipe-prompt"><span>↑</span><b>${t('Scorri su per scoprire', 'Swipe up to reveal')}</b><small>${t('oppure usa il pulsante qui sotto', 'or use the button below')}</small></div>`}</div>${revealed ? button('next', `${t('Nascondi e passa', 'Hide and pass')} <span>→</span>`) : button('reveal', `${t('Sono', "I'm")} ${escape(p.name)} · ${t('Mostra', 'Reveal')} <span>◈</span>`)}<p class="footnote">${g.revealIndex + 1} ${t('di', 'of')} ${g.players.length} · ${t('Il segreto si nasconde se cambi app.', 'Switching apps hides the secret.')}</p></section>`;
+    return `<div class="game-logo"><span>${t("TROVA L’", "FIND THE")}</span><strong>${t("IMPOSTORE", "IMPOSTOR")}</strong></div>${top}<div class="progress" aria-label="${g.revealIndex + 1}/${g.players.length}">${g.players.map((_, i) => `<i class="${i <= g.revealIndex ? 'done' : ''}"></i>`).join('')}</div><section class="game-screen"><p class="eyebrow">${t('PASSA IL TELEFONO A', 'PASS THE PHONE TO')}</p><h1 class="player-title">${escape(p.name)}</h1><p class="helper">${t('Gli altri guardano altrove. Niente sbirciate.', 'Everyone else looks away. No peeking.')}</p><div id="secret-card" class="secret-card ${revealed ? 'flipped' : ''}">${revealed ? `<span class="role-label">${impostor ? t('SEI UN IMPOSTORE', 'YOU ARE AN IMPOSTOR') : t('SEI DELLA CREW', 'YOU ARE CREW')}</span><span class="secret-icon">${impostor ? '🕵️' : '🤫'}</span><p>${impostor ? t('Il tuo indizio è', 'Your hint is') : t('La parola segreta è', 'The secret word is')}</p><h2 class="secret-word">${escape(impostor ? hint : gameWord)}</h2><p class="helper">${impostor ? t('Mimetizzati. Ascolta. Inventati qualcosa.', 'Blend in. Listen. Make something up.') : t('Fatti capire, senza dire troppo.', 'Be clear, without giving too much away.')}</p>` : `<div class="character-art" aria-hidden="true"></div>${avatar(p, 'character-badge')}<div class="swipe-prompt"><span>↑</span><b>${t('Scorri su per scoprire', 'Swipe up to reveal')}</b><small>${t('oppure usa il pulsante qui sotto', 'or use the button below')}</small></div>`}</div>${revealed ? button('next', `${t('Nascondi e passa', 'Hide and pass')} <span>→</span>`) : button('reveal', `${t('Sono', "I'm")} ${escape(p.name)} · ${t('Mostra', 'Reveal')} <span>◈</span>`)}<p class="footnote">${g.revealIndex + 1} ${t('di', 'of')} ${g.players.length} · ${t('Il segreto si nasconde se cambi app.', 'Switching apps hides the secret.')}</p></section>`;
   }
   if (g.phase === 'discuss') {
     const starter = g.players.find(x => x.id === g.starterId)!;
@@ -65,26 +90,41 @@ function gameView(g: Game): string {
   return `${top}<section class="game-screen result"><div class="confetti" aria-hidden="true">✦ · ✧ · ✦</div><span class="big-symbol">${citizensWin(g) ? '🏆' : '🕵️'}</span><p class="eyebrow">${t('MASCHERE GIÙ', 'MASKS OFF')}</p><h1>${citizensWin(g) ? t('Beccati.<br><em>Vince la crew!</em>', 'Busted.<br><em>Crew wins!</em>') : t('Che bluff.<br><em>Vincono gli impostori!</em>', 'What a bluff.<br><em>Impostors win!</em>')}</h1><p class="helper">${t('La parola segreta era', 'The secret word was')}</p><h2 class="answer">${escape(gameWord)}</h2><div class="reveal-list">${g.players.filter(p => g.impostorIds.includes(p.id)).map(p => `<div>${avatar(p)}<strong>${escape(p.name)}</strong><span>${t('Impostore', 'Impostor')}</span></div>`).join('')}</div><p class="helper">${t('Avete accusato:', 'You accused:')} ${g.players.filter(p => g.accusedIds.includes(p.id)).map(p => escape(p.name)).join(', ')}</p>${button('again', `${t('Rivincita', 'Play again')} <span>↻</span>`)}${button('home', t('Cambia giocatori e regole', 'Change players and rules'), 'text-btn')}</section>`;
 }
 
+function playerDialogView(): string {
+  const editing = editingPlayerId ? data.players.find(p => p.id === editingPlayerId) : null;
+  const title = editing ? t('Modifica personaggio.', 'Edit character.') : t('Una nuova faccia.', 'A new face.');
+  const helper = editing ? t('Aggiorna nome o avatar. Le partite future useranno questi dati.', 'Update the name or avatar. Future games will use these details.') : t('Il personaggio resta salvato per le prossime partite.', 'Your character is saved for future games.');
+  const submit = editing ? t('Salva modifiche', 'Save changes') : t('Aggiungi alla crew', 'Add to the crew');
+  return `<h2 id="dialog-title">${title}</h2><p class="helper">${helper}</p><form id="player-form"><label for="name">${t('Nome o soprannome', 'Name or nickname')}</label><input id="name" name="name" placeholder="${t('Come ti chiami?', "What's your name?")}" value="${escape(draftName)}" maxlength="24" required autocomplete="off"/><span class="field-label">${t('Scegli la tua faccia', 'Pick your face')}</span><button type="button" class="avatar-random" data-action="random-avatar">${t('Avatar casuale', 'Random avatar')}</button><div class="avatar-picker">${avatars.map(([id, label], index) => `<button type="button" data-avatar="${id}" aria-label="${t(`Avatar ${index + 1}: ${label}`, `Avatar ${index + 1}: ${label}`)}" aria-pressed="${id === chosenAvatar}" class="${id === chosenAvatar ? 'chosen' : ''}"><span class="avatar" style="--avatar-position:${(index % 4) * 100 / 3}% ${Math.floor(index / 4) * 100 / 3}%" aria-hidden="true"></span></button>`).join('')}</div><p id="form-error" class="error" role="alert"></p><button class="primary" type="submit">${submit} <span>${editing ? '✓' : '＋'}</span></button></form>`;
+}
+
+function deleteDialogView(): string {
+  const player = deletingPlayerId ? data.players.find(p => p.id === deletingPlayerId) : null;
+  if (!player) return '';
+  return `<h2 id="dialog-title">${t('Eliminare questo personaggio?', 'Delete this character?')}</h2><p class="helper">${t(`“${escape(player.name)}” verrà rimosso dalla crew e dalle selezioni.`, `“${escape(player.name)}” will be removed from the crew and selections.`)}</p>${button('confirm-delete', t('Sì, elimina', 'Yes, delete'))}${button('close', t('Annulla', 'Cancel'), 'text-btn')}`;
+}
+
 function dialogView(): string {
   if (!dialog) return '';
   let content = '';
-  if (dialog === 'player') content = `<h2 id="dialog-title">${t('Una nuova faccia.', 'A new face.')}</h2><p class="helper">${t('Il personaggio resta salvato per le prossime partite.', 'Your character is saved for future games.')}</p><form id="player-form"><label for="name">${t('Nome o soprannome', 'Name or nickname')}</label><input id="name" name="name" placeholder="${t('Come ti chiami?', "What's your name?")}" value="${escape(draftName)}" maxlength="24" required autocomplete="off"/><span class="field-label">${t('Scegli la tua faccia', 'Pick your face')}</span><div class="avatar-picker">${avatars.map(a => `<button type="button" data-avatar="${a}" aria-label="${a}" aria-pressed="${a === chosenAvatar}" class="${a === chosenAvatar ? 'chosen' : ''}">${a}</button>`).join('')}</div><p id="form-error" class="error" role="alert"></p><button class="primary" type="submit">${t('Aggiungi alla crew', 'Add to the crew')} <span>＋</span></button></form>`;
+  if (dialog === 'player') content = playerDialogView();
   if (dialog === 'rules') content = `<h2 id="dialog-title">${t('Amici. Bugie. Sospetti.', 'Friends. Lies. Suspicions.')}</h2><ol class="rules"><li><b>${t('Prepara la crew', 'Get the crew ready')}</b><p>${t('Scegli da 3 a 20 giocatori e quanti impostori volete. Gli impostori devono essere meno della metà.', 'Choose 3–20 players and your impostor count. Impostors must be fewer than half the group.')}</p></li><li><b>${t('Passa il telefono', 'Pass the phone')}</b><p>${t('Ognuno guarda la propria carta in segreto. La crew riceve la stessa parola; gli impostori ricevono solo un indizio.', 'Everyone checks their card in secret. Crew members get the same word; impostors get only a hint.')}</p></li><li><b>${t('Parla, ascolta, bluffa', 'Talk, listen, bluff')}</b><p>${t('A turno dite una parola collegata. Non pronunciate la parola segreta! Fate domande e ripetete i giri.', 'Take turns giving a related word. Never say the secret word! Ask questions and repeat rounds.')}</p></li><li><b>${t('Svela gli impostori', 'Catch the impostors')}</b><p>${t('Accusate insieme tanti giocatori quanti sono gli impostori. Se li trovate tutti, vince la crew. Altrimenti vincono gli impostori.', 'Together accuse as many players as there are impostors. Catch them all and the crew wins. Otherwise impostors win.')}</p></li></ol><p class="privacy">${t('Personaggi e partita restano solo in questo browser. Cancellando i dati del sito, li perderai.', 'Characters and your game stay only in this browser. Clearing site data deletes them.')}</p>`;
   if (dialog === 'exit') content = `<h2 id="dialog-title">${t('Interrompere la partita?', 'End this game?')}</h2><p class="helper">${t('I personaggi restano salvati. Questa partita verrà abbandonata.', 'Your characters stay saved. This game will be abandoned.')}</p>${button('home', t('Sì, torna alla crew', 'Yes, back to the crew'))}`;
-  return `<dialog aria-labelledby="dialog-title"><div class="dialog-inner">${button('close', '×', 'close icon-btn')}${content}</div></dialog>`;
+  if (dialog === 'delete') content = deleteDialogView();
+  return `<dialog aria-labelledby="dialog-title"><div class="dialog-inner">${button('close', '<span aria-hidden="true">×</span>', 'close icon-btn', false, t('Chiudi', 'Close'))}${content}</div></dialog>`;
 }
 
 function render(): void {
   document.documentElement.lang = data.language;
-  document.body.classList.toggle('is-playing', !!data.activeGame);
+  document.body.classList.add('is-playing');
   document.title = t('Impostor — Fidati di nessuno.', 'Impostor — Trust no one.');
-  root.innerHTML = `<main class="shell ${data.activeGame ? 'gameplay' : ''}"><header><a class="brand" href="./" aria-label="Impostor"><span class="brand-mark">◈</span> IMPOSTOR</a><div class="header-actions"><button data-action="language" class="language" aria-label="${t('Switch to English', 'Passa a italiano')}">${data.language.toUpperCase()} <span>⌄</span></button>${button('rules', '?', 'icon-btn')}</div></header>${error ? `<div class="error-banner" role="alert">${escape(error)}${!storageReady ? button('retry', t('Riprova', 'Retry'), 'text-btn') : ''}</div>` : ''}${data.activeGame ? gameView(data.activeGame) : setup()}<footer><span>◈</span> ${t('Un telefono. Solo voi.', 'One phone. Just you.')}<span>·</span>${t('Tutto sul dispositivo', 'Everything on-device')}</footer></main>${dialogView()}`;
+  root.innerHTML = `<main class="shell gameplay"><header><a class="brand" href="./" aria-label="Impostor"><span class="brand-mark">◈</span> IMPOSTOR</a><div class="header-actions"><button data-action="language" class="language" aria-label="${t('Switch to English', 'Passa a italiano')}">${data.language.toUpperCase()} <span>⌄</span></button>${button('rules', '?', 'icon-btn')}</div></header>${error ? `<div class="error-banner" role="alert">${escape(error)}${!storageReady ? button('retry', t('Riprova', 'Retry'), 'text-btn') : ''}</div>` : ''}${data.activeGame ? gameView(data.activeGame) : setup()}<footer><span>◈</span> ${t('Un telefono. Solo voi.', 'One phone. Just you.')}<span>·</span>${t('Tutto sul dispositivo', 'Everything on-device')}</footer></main>${dialogView()}`;
   root.querySelector('[data-action="rules"]')?.setAttribute('aria-label', t('Come si gioca', 'How to play'));
   const modal = root.querySelector('dialog');
   if (modal) {
     modal.showModal();
-    modal.addEventListener('cancel', () => { dialog = null; });
-    modal.addEventListener('click', e => { if (e.target === modal) { dialog = null; render(); } });
+    modal.addEventListener('cancel', () => { dialog = null; editingPlayerId = null; deletingPlayerId = null; });
+    modal.addEventListener('click', e => { if (e.target === modal) { dialog = null; editingPlayerId = null; deletingPlayerId = null; render(); } });
     root.querySelector<HTMLInputElement>('#name')?.focus();
   }
 }
@@ -94,18 +134,48 @@ root.addEventListener('change', e => { if ((e.target as HTMLElement).id === 'cat
 root.addEventListener('submit', async e => {
   e.preventDefault();
   const name = draftName.trim().replace(/\s+/g, ' ');
-  if (!name || name.length > 24 || data.players.some(p => p.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
+  if (!name || name.length > 24 || data.players.some(p => p.id !== editingPlayerId && p.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
     root.querySelector('#form-error')!.textContent = t('Scegli un nome unico, da 1 a 24 caratteri.', 'Choose a unique name, 1–24 characters long.');
     return;
   }
-  await change(d => { const player = { id: crypto.randomUUID(), name, avatar: chosenAvatar, createdAt: Date.now() }; d.players.push(player); if (d.selectedIds.length < 20) d.selectedIds.push(player.id); });
-  if (!error) { dialog = null; render(); }
+  const playerId = editingPlayerId;
+  await change(d => {
+    if (playerId) {
+      const player = d.players.find(p => p.id === playerId);
+      if (player) { player.name = name; player.avatar = chosenAvatar; }
+    } else {
+      const player = { id: crypto.randomUUID(), name, avatar: chosenAvatar, createdAt: Date.now() };
+      d.players.push(player);
+      if (d.selectedIds.length < 20) d.selectedIds.push(player.id);
+    }
+  });
+  if (!error) { dialog = null; editingPlayerId = null; render(); }
 });
 root.addEventListener('click', async e => {
   const target = (e.target as HTMLElement).closest<HTMLButtonElement>('button');
   if (!target || target.disabled || busy) return;
   const { action, player, avatar: pick, accuse } = target.dataset;
-  if (pick) { chosenAvatar = pick; render(); return; }
+  if (pick && avatars.some(([id]) => id === pick)) { chosenAvatar = pick as AvatarId; render(); return; }
+  if (action === 'random-avatar') { chosenAvatar = avatars[Math.floor(Math.random() * avatars.length)][0]; render(); return; }
+  if (action === 'edit-player' && player) {
+    const current = data.players.find(p => p.id === player);
+    if (!current) return;
+    editingPlayerId = player;
+    deletingPlayerId = null;
+    draftName = current.name;
+    chosenAvatar = resolveAvatar(current.avatar);
+    dialog = 'player';
+    render();
+    return;
+  }
+  if (action === 'delete-player' && player) {
+    if (!data.players.some(p => p.id === player)) return;
+    deletingPlayerId = player;
+    editingPlayerId = null;
+    dialog = 'delete';
+    render();
+    return;
+  }
   if (player) { await change(d => {
     if (d.selectedIds.includes(player)) d.selectedIds = d.selectedIds.filter(id => id !== player);
     else if (d.selectedIds.length < 20) d.selectedIds.push(player);
@@ -116,8 +186,19 @@ root.addEventListener('click', async e => {
     case 'retry': await init(); break;
     case 'language': revealed = false; await change(d => { d.language = d.language === 'it' ? 'en' : 'it'; }); break;
     case 'rules': revealed = false; dialog = 'rules'; render(); break;
-    case 'add': draftName = ''; chosenAvatar = avatars[data.players.length % avatars.length]; dialog = 'player'; render(); break;
-    case 'close': dialog = null; render(); break;
+    case 'add': draftName = ''; editingPlayerId = null; deletingPlayerId = null; chosenAvatar = avatars[Math.floor(Math.random() * avatars.length)][0]; dialog = 'player'; render(); break;
+    case 'close': dialog = null; editingPlayerId = null; deletingPlayerId = null; render(); break;
+    case 'confirm-delete': {
+      const playerId = deletingPlayerId;
+      if (!playerId) break;
+      await change(d => {
+        d.players = d.players.filter(p => p.id !== playerId);
+        d.selectedIds = d.selectedIds.filter(id => id !== playerId);
+        d.settings.impostors = Math.min(d.settings.impostors, maxImpostors(d.selectedIds.length));
+      });
+      if (!error) { dialog = null; deletingPlayerId = null; render(); }
+      break;
+    }
     case 'minus': await change(d => { d.settings.impostors = Math.max(1, d.settings.impostors - 1); }); break;
     case 'plus': await change(d => { d.settings.impostors = Math.min(maxImpostors(d.selectedIds.length), d.settings.impostors + 1); }); break;
     case 'start': case 'again': revealed = false; await change(d => { d.activeGame = createGame(selected(), d.settings, d.language, d.activeGame?.entry.word); }); window.scrollTo(0, 0); break;
@@ -125,7 +206,7 @@ root.addEventListener('click', async e => {
     case 'next': revealed = false; await change(d => { const g = d.activeGame!; if (g.revealIndex + 1 < g.players.length) g.revealIndex++; else g.phase = 'discuss'; }); window.scrollTo(0, 0); break;
     case 'vote': case 'discuss': await change(d => { d.activeGame!.phase = action; }); window.scrollTo(0, 0); break;
     case 'result': await change(d => { const g = d.activeGame!; if (g.accusedIds.length === g.impostorIds.length) g.phase = 'result'; }); navigator.vibrate?.([30, 40, 30]); window.scrollTo(0, 0); break;
-    case 'exit': revealed = false; dialog = 'exit'; render(); break;
+    case 'exit': revealed = false; dialog = 'exit'; editingPlayerId = null; deletingPlayerId = null; render(); break;
     case 'home': dialog = null; revealed = false; await change(d => { d.activeGame = null; }); window.scrollTo(0, 0); break;
   }
 });

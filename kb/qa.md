@@ -11,6 +11,8 @@ Validated in the Codex in-app browser using smartphone viewport overrides of 390
 - Started a rematch and confirmed English cards and a new word.
 - Checked the result view at the narrow viewport: no horizontal overflow.
 - Validated `get_game_setup` WebMCP readback; invalid input rejected without modifying state. The tool does not expose roles, words, hints or player names.
+- Validated setup at the mobile viewport: initial screen uses the gameplay palette/background, and the new-character dialog exposes manual avatar selection plus a styled random-avatar action with a random initial choice.
+- Validated mobile setup actions: character cards remain usable in a single-column layout; Edit opens prefilled name/avatar data; Delete opens an explicit confirmation dialog before removing a character.
 
 Automated checks: `npm test` (15 tests) and `npm run build`. Tests cover IndexedDB snapshot replacement, structured cloning and failure preservation; player/impostor limits, role uniqueness, category validation, consecutive-word exclusion, snapshot isolation, and win conditions.
 

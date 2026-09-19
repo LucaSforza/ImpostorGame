@@ -70,6 +70,7 @@ let revealed = false;
 let busy = false;
 let storageReady = false;
 let error = '';
+let categoryScreen = false;
 let dialog: 'player' | 'rules' | 'exit' | 'delete' | null = null;
 let chosenAvatar: string = avatars[0][0];
 let draftName = '';
@@ -135,6 +136,17 @@ function categoryPicker(): string {
   return `<p class="category-hint">${t('category.selectHint')}</p><div class="category-picker" role="group" aria-label="${t('deck.title')}">${categoryCard('all')}${categories.map(categoryCard).join('')}</div><p class="category-summary">${t(summaryKey, { count: selectedCount })}</p>`;
 }
 
+function categorySelectionSummary(): string {
+  const selection = normalizeCategorySelection(data.settings.category);
+  const count = selection === 'all' ? categories.length : (selectedCategoryIds(selection) ?? []).length;
+  const key = selection === 'all' ? 'category.selectedAll' : count === 1 ? 'category.selectedOne' : 'category.selectedMany';
+  return t(key, { count });
+}
+
+function categoryScreenView(): string {
+  return `<section class="category-screen"><div class="category-screen-head"><button class="category-screen-back" data-action="close-categories" aria-label="${t('category.back')}">←</button><div><span class="eyebrow">${t('category.eyebrow')}</span><h1>${t('category.title')}</h1></div></div>${categoryPicker()}${button('close-categories', `${t('category.done')} <span>✓</span>`)}</section>`;
+}
+
 function setup(): string {
   const count = data.selectedIds.length;
   return `<section class="cover"><div class="cover-art"></div><div class="cover-copy"><span class="eyebrow">${t('cover.eyebrow')}</span><h1>${t('cover.title')}</h1><p>${t('cover.subtitle')}</p></div><span class="cover-tag">${t('cover.tag')}</span><span class="spark">✦</span></section>
@@ -142,7 +154,7 @@ function setup(): string {
   ${data.players.length ? `<p class="helper">${t('setup.helper')}</p><div class="players">${data.players.map(playerCard).join('')}</div>` : `<div class="empty"><span>✦</span><p>${t('setup.empty')}</p></div>`}
   ${button('add', `＋ ${t('player.new')}`, 'secondary', !storageReady)}
   <div class="setting"><div><strong>${t('game.impostors')}</strong><small>${t('game.impostorHint')}</small></div><div class="stepper"><button data-action="minus" aria-label="${t('game.fewerImpostors')}" ${data.settings.impostors <= 1 || busy ? 'disabled' : ''}>−</button><b>${data.settings.impostors}</b><button data-action="plus" aria-label="${t('game.moreImpostors')}" ${data.settings.impostors >= maxImpostors(count) || busy ? 'disabled' : ''}>+</button></div></div>
-  <div class="setting category-setting"><div class="category-setting-copy"><strong>${t('deck.title')}</strong><small>${t('deck.subtitle')}</small></div>${categoryPicker()}</div>
+  <div class="setting category-setting"><div class="category-setting-copy"><strong>${t('deck.title')}</strong><small>${t('deck.subtitle')}</small><span>${categorySelectionSummary()}</span></div>${button('open-categories', `${t('category.change')} <span>→</span>`, 'category-open')}</div>
   ${button('start', `${t('game.start')} <span>↗</span>`, 'primary', count < 3 || !storageReady)}
   <p class="footnote">${count < 3 ? t(3 - count === 1 ? 'setup.morePlayersOne' : 'setup.morePlayersMany', { count: 3 - count }) : t('setup.passSecrets')}</p></section>`;
 }
@@ -192,7 +204,7 @@ function render(): void {
   document.documentElement.lang = data.language;
   document.body.classList.add('is-playing');
   document.title = t('document.title');
-  root.innerHTML = `<main class="shell gameplay"><header><a class="brand" href="./" aria-label="Impostor"><span class="brand-mark">◈</span> IMPOSTOR</a><div class="header-actions"><button data-action="language" class="language" aria-label="${t(data.language === 'it' ? 'language.switchToEnglish' : 'language.switchToItalian')}">${data.language.toUpperCase()} <span>⌄</span></button>${button('rules', '?', 'icon-btn')}</div></header>${error ? `<div class="error-banner" role="alert">${escape(error)}${!storageReady ? button('retry', t('action.retry'), 'text-btn') : ''}</div>` : ''}${data.activeGame ? gameView(data.activeGame) : setup()}<footer><span>◈</span> ${t('footer.onePhone')}<span>·</span>${t('footer.onDevice')}</footer></main>${dialogView()}`;
+  root.innerHTML = `<main class="shell gameplay"><header><a class="brand" href="./" aria-label="Impostor"><span class="brand-mark">◈</span> IMPOSTOR</a><div class="header-actions"><button data-action="language" class="language" aria-label="${t(data.language === 'it' ? 'language.switchToEnglish' : 'language.switchToItalian')}">${data.language.toUpperCase()} <span>⌄</span></button>${button('rules', '?', 'icon-btn')}</div></header>${error ? `<div class="error-banner" role="alert">${escape(error)}${!storageReady ? button('retry', t('action.retry'), 'text-btn') : ''}</div>` : ''}${data.activeGame ? gameView(data.activeGame) : categoryScreen ? categoryScreenView() : setup()}<footer><span>◈</span> ${t('footer.onePhone')}<span>·</span>${t('footer.onDevice')}</footer></main>${dialogView()}`;
   root.querySelector('[data-action="rules"]')?.setAttribute('aria-label', t('rules.open'));
   const modal = root.querySelector('dialog');
   if (modal) {
@@ -258,6 +270,8 @@ root.addEventListener('click', async e => {
   const { action, player, avatar: pick, accuse, category } = target.dataset;
   if (pick && avatars.some(([id]) => id === pick)) { chosenAvatar = pick as AvatarId; photoError = ''; render(); return; }
   if (action === 'random-avatar') { chosenAvatar = avatars[Math.floor(Math.random() * avatars.length)][0]; photoError = ''; render(); return; }
+  if (action === 'open-categories') { categoryScreen = true; window.scrollTo(0, 0); render(); return; }
+  if (action === 'close-categories') { categoryScreen = false; window.scrollTo(0, 0); render(); return; }
   if (category && (category === 'all' || categories.includes(category as SelectableCategoryId))) {
     await change(d => {
       if (category === 'all') {
@@ -318,13 +332,13 @@ root.addEventListener('click', async e => {
     }
     case 'minus': await change(d => { d.settings.impostors = Math.max(1, d.settings.impostors - 1); }); break;
     case 'plus': await change(d => { d.settings.impostors = Math.min(maxImpostors(d.selectedIds.length), d.settings.impostors + 1); }); break;
-    case 'start': case 'again': revealed = false; await change(d => { d.activeGame = createGame(selected(), d.settings, d.activeGame?.entry.word); }); window.scrollTo(0, 0); break;
+    case 'start': case 'again': categoryScreen = false; revealed = false; await change(d => { d.activeGame = createGame(selected(), d.settings, d.activeGame?.entry.word); }); window.scrollTo(0, 0); break;
     case 'reveal': revealCard(); break;
     case 'next': revealed = false; await change(d => { const g = d.activeGame!; if (g.revealIndex + 1 < g.players.length) g.revealIndex++; else g.phase = 'discuss'; }); window.scrollTo(0, 0); break;
     case 'vote': case 'discuss': await change(d => { d.activeGame!.phase = action; }); window.scrollTo(0, 0); break;
     case 'result': await change(d => { const g = d.activeGame!; if (g.accusedIds.length === g.impostorIds.length) g.phase = 'result'; }); navigator.vibrate?.([30, 40, 30]); window.scrollTo(0, 0); break;
     case 'exit': revealed = false; dialog = 'exit'; editingPlayerId = null; deletingPlayerId = null; photoError = ''; render(); break;
-    case 'home': dialog = null; revealed = false; await change(d => { d.activeGame = null; }); window.scrollTo(0, 0); break;
+    case 'home': categoryScreen = false; dialog = null; revealed = false; await change(d => { d.activeGame = null; }); window.scrollTo(0, 0); break;
   }
 });
 // Never persist an exposed card: reloads, app switching and history restore conceal it.

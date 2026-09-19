@@ -42,7 +42,7 @@ describe("local game snapshot", () => {
       language: "en",
       activeGame: null,
     };
-    const second: AppData<null> = { ...first, settings: { impostors: 2, maxAttempts: 1, category: "food" } };
+    const second: AppData<null> = { ...first, settings: { impostors: 1, maxAttempts: 1, category: "food" } };
 
     await saveData(first);
     await saveData(second);
@@ -127,5 +127,19 @@ describe("local game snapshot", () => {
       settings: { ...legacy.settings, maxAttempts: 1 },
       players: [{ ...legacy.players[0], stats: { gamesPlayed: 0, citizenWins: 0, citizenLosses: 0, impostorWins: 0, impostorLosses: 0 } }],
     });
+  });
+
+  it("normalizes legacy attempt limits using the remaining-candidate bound", async () => {
+    const legacy = {
+      players: Array.from({ length: 5 }, (_, index) => ({ id: `p${index + 1}`, name: `Player ${index + 1}`, avatar: "fox", createdAt: index + 1 })),
+      selectedIds: ["p1", "p2", "p3", "p4", "p5"],
+      settings: { impostors: 2, category: "animals" },
+      language: "en",
+      activeGame: null,
+    } as unknown as AppData<null>;
+
+    await saveData(legacy);
+
+    await expect(loadData()).resolves.toMatchObject({ settings: { maxAttempts: 2 } });
   });
 });

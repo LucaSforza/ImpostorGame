@@ -125,8 +125,13 @@ function isSnapshot<T>(value: unknown): value is AppData<T> {
   if (!Array.isArray(value.players) || !value.players.every(isPlayer)) return false;
   if (!Array.isArray(value.selectedIds) || !value.selectedIds.every((id) => typeof id === "string")) return false;
   if (!isRecord(value.settings)) return false;
-  const maxAllowedAttempts = Math.max(1, value.selectedIds.length - (typeof value.settings.impostors === "number" ? value.settings.impostors : 1));
+  const impostors = typeof value.settings.impostors === "number" ? value.settings.impostors : 1;
+  const minAllowedAttempts = Math.max(1, impostors);
+  const maxAllowedAttempts = Math.max(1, value.selectedIds.length);
+  const maxAllowedImpostors = Math.max(1, Math.floor((value.selectedIds.length - 1) / 2));
   return Number.isInteger(value.settings.impostors)
+    && impostors >= 1
+    && impostors <= maxAllowedImpostors
     && (value.settings.maxAttempts === undefined || (isCounter(value.settings.maxAttempts) && value.settings.maxAttempts >= 1 && value.settings.maxAttempts <= maxAllowedAttempts))
     && isCategorySelection(value.settings.category)
     && (value.language === "it" || value.language === "en")
@@ -136,11 +141,14 @@ function isSnapshot<T>(value: unknown): value is AppData<T> {
 function validateSnapshot<T>(data: AppData<T>): AppData<T> {
   if (!isSnapshot<T>(data)) throw new Error("Invalid snapshot");
   const cloned = structuredClone(data);
+  const minimumAttempts = Math.max(1, cloned.settings.impostors);
+  const maximumAttempts = Math.max(1, cloned.selectedIds.length);
+  const configuredAttempts = cloned.settings.maxAttempts ?? minimumAttempts;
   return {
     ...cloned,
     settings: {
       ...cloned.settings,
-      maxAttempts: cloned.settings.maxAttempts ?? Math.max(1, cloned.selectedIds.length - cloned.settings.impostors),
+      maxAttempts: Math.max(minimumAttempts, Math.min(maximumAttempts, configuredAttempts)),
     },
     players: cloned.players.map((player) => ({
       ...player,

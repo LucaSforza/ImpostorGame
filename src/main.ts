@@ -1,6 +1,6 @@
 import './style.css';
 import { emptyPlayerStats, loadData, saveData, type AppData, type Player, type PlayerStats } from './db';
-import { createGame, localizeEntry, maxAttempts, maxImpostors, citizensWin, recordGameResult, type Game } from './game';
+import { createGame, localizeEntry, maxAttempts, minAttempts, maxImpostors, citizensWin, recordGameResult, resolveVote, type Game } from './game';
 import { categoryDescription, categoryLabel, translate, type MessageKey, type MessageParams } from './i18n';
 import { categories, normalizeCategorySelection, selectedCategoryIds, type CategoryId, type SelectableCategoryId } from './words';
 import avatar01 from './assets/avatars/avatar-01.webp';
@@ -82,6 +82,7 @@ const t = (key: MessageKey, params?: MessageParams) => translate(data.language, 
 const escape = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 const categoryName = (c: CategoryId) => categoryLabel(data.language, c);
 const selected = () => data.players.filter(p => data.selectedIds.includes(p.id));
+const clampAttempts = (playerCount: number, impostorCount: number, value: number) => Math.max(minAttempts(playerCount, impostorCount), Math.min(maxAttempts(playerCount, impostorCount), value));
 const button = (action: string, label: string, cls = 'primary', disabled = false, ariaLabel = '') => `<button class="${cls}" data-action="${action}" ${ariaLabel ? `aria-label="${escape(ariaLabel)}"` : ''} ${disabled || busy ? 'disabled' : ''}>${label}</button>`;
 const resolveAvatar = (value: string): AvatarId => avatars.find(([id]) => id === value)?.[0] ?? legacyAvatarMap[value] ?? avatars[0][0];
 const isPhotoAvatar = (value: string) => value.startsWith('data:image/');
@@ -159,13 +160,14 @@ function categoryScreenView(): string {
 function setup(): string {
   const count = data.selectedIds.length;
   const attemptLimit = maxAttempts(count, data.settings.impostors);
-  const attempts = Math.min(data.settings.maxAttempts, attemptLimit);
+  const attemptMinimum = minAttempts(count, data.settings.impostors);
+  const attempts = clampAttempts(count, data.settings.impostors, data.settings.maxAttempts);
   return `<section class="cover"><div class="cover-art"></div><div class="cover-copy"><span class="eyebrow">${t('cover.eyebrow')}</span><h1>${t('cover.title')}</h1><p>${t('cover.subtitle')}</p></div><span class="cover-tag">${t('cover.tag')}</span><span class="spark">✦</span></section>
   <section class="setup"><div class="section-heading"><div><span class="eyebrow">${t('setup.eyebrow')}</span><h2>${t('setup.title')}</h2></div><span class="count">${count}/20</span></div>
   ${data.players.length ? `<p class="helper">${t('setup.helper')}</p><div class="players">${data.players.map(playerCard).join('')}</div>` : `<div class="empty"><span>✦</span><p>${t('setup.empty')}</p></div>`}
   ${button('add', `＋ ${t('player.new')}`, 'secondary', !storageReady)}
   <div class="setting"><div><strong>${t('game.impostors')}</strong><small>${t('game.impostorHint')}</small></div><div class="stepper"><button data-action="minus" aria-label="${t('game.fewerImpostors')}" ${data.settings.impostors <= 1 || busy ? 'disabled' : ''}>−</button><b>${data.settings.impostors}</b><button data-action="plus" aria-label="${t('game.moreImpostors')}" ${data.settings.impostors >= maxImpostors(count) || busy ? 'disabled' : ''}>+</button></div></div>
-  <div class="setting"><div><strong>${t('game.attempts')}</strong><small>${t('game.attemptsHint', { max: attemptLimit })}</small></div><div class="stepper"><button data-action="attempt-minus" aria-label="${t('game.fewerAttempts')}" ${attempts <= 1 || busy ? 'disabled' : ''}>−</button><b>${attempts}</b><button data-action="attempt-plus" aria-label="${t('game.moreAttempts')}" ${attempts >= attemptLimit || busy ? 'disabled' : ''}>+</button></div></div>
+  <div class="setting"><div><strong>${t('game.attempts')}</strong><small>${t('game.attemptsHint', { min: attemptMinimum, max: attemptLimit })}</small></div><div class="stepper"><button data-action="attempt-minus" aria-label="${t('game.fewerAttempts')}" ${attempts <= attemptMinimum || busy ? 'disabled' : ''}>−</button><b>${attempts}</b><button data-action="attempt-plus" aria-label="${t('game.moreAttempts')}" ${attempts >= attemptLimit || busy ? 'disabled' : ''}>+</button></div></div>
   <div class="setting category-setting"><div class="category-setting-copy"><strong>${t('deck.title')}</strong><small>${t('deck.subtitle')}</small><span>${categorySelectionSummary()}</span></div>${button('open-categories', `${t('category.change')} <span>→</span>`, 'category-open')}</div>
   ${button('start', `${t('game.start')} <span>↗</span>`, 'primary', count < 3 || !storageReady)}
   <p class="footnote">${count < 3 ? t(3 - count === 1 ? 'setup.morePlayersOne' : 'setup.morePlayersMany', { count: 3 - count }) : t('setup.passSecrets')}</p></section>`;
@@ -175,6 +177,7 @@ function gameView(g: Game): string {
   const p = g.players[g.revealIndex];
   const { word: gameWord, hint } = localizeEntry(g.entry, data.language);
   const phaseLabel = { reveal: t('game.phase.reveal'), discuss: t('game.phase.discuss'), vote: t('game.phase.vote'), result: t('game.phase.result') }[g.phase];
+  const allAccusedIds = new Set([...g.eliminatedIds, ...g.accusedIds]);
   const top = `<div class="round-top">${button('exit', '←', 'icon-btn')}<span class="eyebrow">${phaseLabel}</span><span class="count">${g.players.length} ${t('game.friends')}</span></div>`;
   if (g.phase === 'reveal') {
     const impostor = g.impostorIds.includes(p.id);
@@ -182,11 +185,19 @@ function gameView(g: Game): string {
   }
   if (g.phase === 'discuss') {
     const starter = g.players.find(x => x.id === g.starterId)!;
-    const attemptNotice = g.attemptsUsed > 0 ? `<div class="attempt-notice">${t(g.maxAttempts - g.attemptsUsed === 1 ? 'game.attemptFailedOne' : 'game.attemptFailedMany', { used: g.attemptsUsed, remaining: g.maxAttempts - g.attemptsUsed })}</div>` : '';
+    const remainingAttempts = g.maxAttempts - g.attemptsUsed;
+    const attemptNotice = g.attemptsUsed > 0 ? `<div class="attempt-notice">${t(g.lastVoteWasImpostor ? 'game.attemptFound' : remainingAttempts === 1 ? 'game.attemptFailedOne' : 'game.attemptFailedMany', { used: g.attemptsUsed, remaining: remainingAttempts })}</div>` : '';
     return `${top}<section class="game-screen">${attemptNotice}<span class="big-symbol">✦</span><h1>${t('game.discuss.title')}</h1><p class="helper">${t('game.discuss.subtitle')}</p><div class="starter">${avatar(starter)}<div><small>${t('game.breaksIce')}</small><strong>${escape(starter.name)}</strong></div></div><div class="tip"><b>${t('game.askQuestions')}</b><p>${t('game.discuss.tip')}</p></div>${button('vote', `${t('game.vote')} <span>→</span>`)}</section>`;
   }
-  if (g.phase === 'vote') return `${top}<section class="game-screen"><p class="eyebrow">${t('game.vote.trust')}</p><h1>${t('game.vote.title')}</h1><p class="attempt-status">${t('game.attemptStatus', { used: g.attemptsUsed + 1, max: g.maxAttempts })}</p><p class="helper">${t(g.impostorIds.length === 1 ? 'game.vote.helperOne' : 'game.vote.helperMany', { count: g.impostorIds.length })}</p><div class="players vote-players">${g.players.map(p => `<button class="player ${g.accusedIds.includes(p.id) ? 'selected' : ''}" data-accuse="${p.id}" aria-pressed="${g.accusedIds.includes(p.id)}">${avatar(p)}<span>${escape(p.name)}</span><span class="check">${g.accusedIds.includes(p.id) ? '✓' : '+'}</span></button>`).join('')}</div>${button('result', `${t('game.revealTruth')} <span>✦</span>`, 'primary', g.accusedIds.length !== g.impostorIds.length)}${button('discuss', t('game.backToDiscussion'), 'text-btn')}</section>`;
-  return `${top}<section class="game-screen result"><div class="confetti" aria-hidden="true">✦ · ✧ · ✦</div><span class="big-symbol">${citizensWin(g) ? '🏆' : '🕵️'}</span><p class="eyebrow">${t('game.result.masksOff')}</p><h1>${citizensWin(g) ? t('game.result.crewWin') : t('game.result.impostorsWin')}</h1><p class="helper">${t('game.result.secretWas')}</p><h2 class="answer">${escape(gameWord)}</h2><p class="attempt-status">${t('game.attemptsUsed', { used: g.attemptsUsed, max: g.maxAttempts })}</p><div class="reveal-list">${g.players.filter(p => g.impostorIds.includes(p.id)).map(p => `<div>${avatar(p)}<strong>${escape(p.name)}</strong><span>${t('game.impostor')}</span></div>`).join('')}</div><p class="helper">${t('game.accused')} ${g.players.filter(p => g.accusedIds.includes(p.id)).map(p => escape(p.name)).join(', ')}</p>${button('again', `${t('game.rematch')} <span>↻</span>`)}${button('home', t('game.changeSetup'), 'text-btn')}</section>`;
+  if (g.phase === 'vote') {
+    const votePlayers = g.players.map(p => {
+      const selected = g.accusedIds.includes(p.id);
+      const eliminated = g.eliminatedIds.includes(p.id);
+      return `<button class="player ${selected ? 'selected' : ''}${eliminated ? ' eliminated' : ''}" data-accuse="${p.id}" aria-pressed="${selected}" ${eliminated ? 'disabled' : ''}>${avatar(p)}<span>${escape(p.name)}</span><span class="check">${eliminated ? t('game.alreadyVoted') : selected ? '✓' : '+'}</span></button>`;
+    }).join('');
+    return `${top}<section class="game-screen"><p class="eyebrow">${t('game.vote.trust')}</p><h1>${t('game.vote.title')}</h1><p class="attempt-status">${t('game.attemptStatus', { used: g.attemptsUsed + 1, max: g.maxAttempts })}</p><p class="helper">${t('game.vote.helper')}</p><div class="players vote-players">${votePlayers}</div>${button('result', `${t('game.revealTruth')} <span>✦</span>`, 'primary', g.accusedIds.length !== 1)}${button('discuss', t('game.backToDiscussion'), 'text-btn')}</section>`;
+  }
+  return `${top}<section class="game-screen result"><div class="confetti" aria-hidden="true">✦ · ✧ · ✦</div><span class="big-symbol">${citizensWin(g) ? '🏆' : '🕵️'}</span><p class="eyebrow">${t('game.result.masksOff')}</p><h1>${citizensWin(g) ? t('game.result.crewWin') : t('game.result.impostorsWin')}</h1><p class="helper">${t('game.result.secretWas')}</p><h2 class="answer">${escape(gameWord)}</h2><p class="attempt-status">${t('game.attemptsUsed', { used: g.attemptsUsed, max: g.maxAttempts })}</p><div class="reveal-list">${g.players.filter(p => g.impostorIds.includes(p.id)).map(p => `<div>${avatar(p)}<strong>${escape(p.name)}</strong><span>${t('game.impostor')}</span></div>`).join('')}</div><p class="helper">${t('game.accused')} ${g.players.filter(p => allAccusedIds.has(p.id)).map(p => escape(p.name)).join(', ')}</p>${button('again', `${t('game.rematch')} <span>↻</span>`)}${button('home', t('game.changeSetup'), 'text-btn')}</section>`;
 }
 
 function playerDialogView(): string {
@@ -349,9 +360,9 @@ root.addEventListener('click', async e => {
     if (d.selectedIds.includes(player)) d.selectedIds = d.selectedIds.filter(id => id !== player);
     else if (d.selectedIds.length < 20) d.selectedIds.push(player);
     d.settings.impostors = Math.min(d.settings.impostors, maxImpostors(d.selectedIds.length));
-    d.settings.maxAttempts = Math.min(d.settings.maxAttempts, maxAttempts(d.selectedIds.length, d.settings.impostors));
+    d.settings.maxAttempts = clampAttempts(d.selectedIds.length, d.settings.impostors, d.settings.maxAttempts);
   }); return; }
-  if (accuse) { await change(d => { const g = d.activeGame!; if (g.accusedIds.includes(accuse)) g.accusedIds = g.accusedIds.filter(id => id !== accuse); else if (g.accusedIds.length < g.impostorIds.length) g.accusedIds.push(accuse); }); return; }
+  if (accuse) { await change(d => { const g = d.activeGame!; if (g.eliminatedIds.includes(accuse)) return; if (g.accusedIds.includes(accuse)) g.accusedIds = g.accusedIds.filter(id => id !== accuse); else if (g.accusedIds.length < 1) g.accusedIds.push(accuse); }); return; }
   switch (action) {
     case 'retry': await init(); break;
     case 'language': revealed = false; await change(d => { d.language = d.language === 'it' ? 'en' : 'it'; }); break;
@@ -365,20 +376,20 @@ root.addEventListener('click', async e => {
         d.players = d.players.filter(p => p.id !== playerId);
         d.selectedIds = d.selectedIds.filter(id => id !== playerId);
         d.settings.impostors = Math.min(d.settings.impostors, maxImpostors(d.selectedIds.length));
-        d.settings.maxAttempts = Math.min(d.settings.maxAttempts, maxAttempts(d.selectedIds.length, d.settings.impostors));
+        d.settings.maxAttempts = clampAttempts(d.selectedIds.length, d.settings.impostors, d.settings.maxAttempts);
       });
       if (!error) { dialog = null; deletingPlayerId = null; photoError = ''; render(); }
       break;
     }
-    case 'minus': await change(d => { d.settings.impostors = Math.max(1, d.settings.impostors - 1); d.settings.maxAttempts = Math.min(d.settings.maxAttempts, maxAttempts(d.selectedIds.length, d.settings.impostors)); }); break;
-    case 'plus': await change(d => { d.settings.impostors = Math.min(maxImpostors(d.selectedIds.length), d.settings.impostors + 1); d.settings.maxAttempts = Math.min(d.settings.maxAttempts, maxAttempts(d.selectedIds.length, d.settings.impostors)); }); break;
-    case 'attempt-minus': await change(d => { d.settings.maxAttempts = Math.max(1, d.settings.maxAttempts - 1); }); break;
-    case 'attempt-plus': await change(d => { d.settings.maxAttempts = Math.min(maxAttempts(d.selectedIds.length, d.settings.impostors), d.settings.maxAttempts + 1); }); break;
+    case 'minus': await change(d => { d.settings.impostors = Math.max(1, d.settings.impostors - 1); d.settings.maxAttempts = clampAttempts(d.selectedIds.length, d.settings.impostors, d.settings.maxAttempts); }); break;
+    case 'plus': await change(d => { d.settings.impostors = Math.min(maxImpostors(d.selectedIds.length), d.settings.impostors + 1); d.settings.maxAttempts = clampAttempts(d.selectedIds.length, d.settings.impostors, d.settings.maxAttempts); }); break;
+    case 'attempt-minus': await change(d => { d.settings.maxAttempts = clampAttempts(d.selectedIds.length, d.settings.impostors, d.settings.maxAttempts - 1); }); break;
+    case 'attempt-plus': await change(d => { d.settings.maxAttempts = clampAttempts(d.selectedIds.length, d.settings.impostors, d.settings.maxAttempts + 1); }); break;
     case 'start': case 'again': categoryScreen = false; revealed = false; await change(d => { d.activeGame = createGame(selected(), d.settings, d.activeGame?.entry.word); }); window.scrollTo(0, 0); break;
     case 'reveal': revealCard(); break;
     case 'next': revealed = false; await change(d => { const g = d.activeGame!; if (g.revealIndex + 1 < g.players.length) g.revealIndex++; else g.phase = 'discuss'; }); window.scrollTo(0, 0); break;
     case 'vote': case 'discuss': await change(d => { d.activeGame!.phase = action; }); window.scrollTo(0, 0); break;
-    case 'result': await change(d => { const g = d.activeGame!; if (g.accusedIds.length === g.impostorIds.length) { g.attemptsUsed += 1; if (citizensWin(g) || g.attemptsUsed >= g.maxAttempts) { g.phase = 'result'; if (!g.scoreRecorded) { d.players = recordGameResult(d.players, g); g.scoreRecorded = true; } } else { g.accusedIds = []; g.phase = 'discuss'; } } }); navigator.vibrate?.([30, 40, 30]); window.scrollTo(0, 0); break;
+    case 'result': await change(d => { const g = d.activeGame!; const resolution = resolveVote(g); if (resolution === 'result') { g.phase = 'result'; if (!g.scoreRecorded) { d.players = recordGameResult(d.players, g); g.scoreRecorded = true; } } else if (resolution === 'continue') g.phase = 'discuss'; }); navigator.vibrate?.([30, 40, 30]); window.scrollTo(0, 0); break;
     case 'exit': revealed = false; dialog = 'exit'; editingPlayerId = null; deletingPlayerId = null; photoError = ''; render(); break;
     case 'home': categoryScreen = false; dialog = null; revealed = false; await change(d => { d.activeGame = null; }); window.scrollTo(0, 0); break;
   }
@@ -397,8 +408,17 @@ async function init() {
       const migrated = structuredClone(data);
       const active = migrated.activeGame!;
       let needsSave = false;
-      if (!Number.isInteger(active.maxAttempts)) { active.maxAttempts = maxAttempts(active.players.length, active.impostorIds.length); needsSave = true; }
+      const allowedAttempts = maxAttempts(active.players.length, active.impostorIds.length);
+      const minimumAttempts = minAttempts(active.players.length, active.impostorIds.length);
+      if (!Number.isInteger(active.maxAttempts) || active.maxAttempts < minimumAttempts || active.maxAttempts > allowedAttempts) {
+        const configuredAttempts = Number.isInteger(active.maxAttempts) ? active.maxAttempts : minimumAttempts;
+        active.maxAttempts = clampAttempts(active.players.length, active.impostorIds.length, configuredAttempts);
+        needsSave = true;
+      }
       if (!Number.isInteger(active.attemptsUsed)) { active.attemptsUsed = 0; needsSave = true; }
+      if (!Array.isArray(active.eliminatedIds)) { active.eliminatedIds = []; needsSave = true; }
+      if (!Array.isArray(active.foundImpostorIds)) { active.foundImpostorIds = []; needsSave = true; }
+      if (typeof active.lastVoteWasImpostor !== 'boolean' && active.lastVoteWasImpostor !== null) { active.lastVoteWasImpostor = null; needsSave = true; }
       if (active.phase === 'result' && !active.scoreRecorded) { migrated.players = recordGameResult(migrated.players, active); active.scoreRecorded = true; needsSave = true; }
       if (needsSave) { await saveData(migrated); data = migrated; }
     }

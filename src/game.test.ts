@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Player } from "./db";
-import { citizensWin, createGame, localizeEntry, recordGameResult } from "./game";
+import { citizensWin, createGame, localizeEntry, recordGameResult, resolveVote } from "./game";
 import type { CategorySelection } from "./words";
 
 function makePlayers(count: number): Player[] {
@@ -14,7 +14,7 @@ function makePlayers(count: number): Player[] {
 }
 
 function makeSettings(impostors: number, category: CategorySelection = "all") {
-  return { impostors, maxAttempts: 1, category };
+  return { impostors, maxAttempts: impostors, category };
 }
 
 describe("createGame", () => {
@@ -46,8 +46,9 @@ describe("createGame", () => {
     expect(() => createGame(players, makeSettings(1))).toThrow("Invalid player count");
   });
 
-  it("rejects attempt limits above the number of citizens", () => {
-    expect(() => createGame(makePlayers(5), { ...makeSettings(2), maxAttempts: 4 })).toThrow("Invalid attempt count");
+  it("allows one vote per session and bounds sessions between impostors and players", () => {
+    expect(() => createGame(makePlayers(5), { ...makeSettings(2), maxAttempts: 1 })).toThrow("Invalid attempt count");
+    expect(() => createGame(makePlayers(5), { ...makeSettings(2), maxAttempts: 6 })).toThrow("Invalid attempt count");
     expect(createGame(makePlayers(5), { ...makeSettings(2), maxAttempts: 3 }).maxAttempts).toBe(3);
   });
 
@@ -93,6 +94,35 @@ describe("citizensWin", () => {
 
     game.accusedIds = [firstImpostor, secondImpostor, citizenId];
     expect(citizensWin(game)).toBe(false);
+  });
+});
+
+describe("resolveVote", () => {
+  it("resolves one candidate per session and keeps prior votes unavailable", () => {
+    const game = createGame(makePlayers(5), { ...makeSettings(2), maxAttempts: 3 });
+    const wrongId = game.players.find(player => !game.impostorIds.includes(player.id))!.id;
+    const [firstImpostor, secondImpostor] = game.impostorIds;
+
+    game.accusedIds = [wrongId];
+
+    expect(resolveVote(game)).toBe("continue");
+    expect(game.eliminatedIds).toEqual([wrongId]);
+    expect(game.foundImpostorIds).toEqual([]);
+    expect(game.accusedIds).toEqual([]);
+    expect(game.attemptsUsed).toBe(1);
+
+    game.accusedIds = [wrongId, firstImpostor];
+    expect(resolveVote(game)).toBe("invalid");
+    expect(game.attemptsUsed).toBe(1);
+
+    game.accusedIds = [firstImpostor];
+    expect(resolveVote(game)).toBe("continue");
+    expect(game.foundImpostorIds).toEqual([firstImpostor]);
+
+    game.accusedIds = [secondImpostor];
+    expect(resolveVote(game)).toBe("result");
+    expect(game.foundImpostorIds).toEqual([firstImpostor, secondImpostor]);
+    expect(game.accusedIds).toEqual([]);
   });
 });
 

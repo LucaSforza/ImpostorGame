@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Player } from "./db";
-import { citizensWin, createGame, localizeEntry } from "./game";
+import { citizensWin, createGame, localizeEntry, recordGameResult } from "./game";
 import type { CategorySelection } from "./words";
 
 function makePlayers(count: number): Player[] {
@@ -9,6 +9,7 @@ function makePlayers(count: number): Player[] {
     name: `Player ${index + 1}`,
     avatar: "🙂",
     createdAt: index + 1,
+    stats: { gamesPlayed: 0, citizenWins: 0, citizenLosses: 0, impostorWins: 0, impostorLosses: 0 },
   }));
 }
 
@@ -96,5 +97,40 @@ describe("localizeEntry", () => {
 
     expect(localizeEntry(game.entry, "it")).toEqual({ word: game.entry.word, hint: game.entry.hint, category: "Oggetti" });
     expect(localizeEntry(game.entry, "en")).toEqual({ word: game.entry.wordEn, hint: game.entry.hintEn, category: "Objects" });
+  });
+});
+
+describe("recordGameResult", () => {
+  it("records one role-specific result for every participant", () => {
+    const players = makePlayers(5);
+    const game = createGame(players, makeSettings(2));
+    game.accusedIds = [...game.impostorIds];
+
+    const updated = recordGameResult(players, game);
+
+    for (const player of updated) {
+      expect(player.stats.gamesPlayed).toBe(1);
+      if (game.impostorIds.includes(player.id)) {
+        expect(player.stats.impostorLosses).toBe(1);
+        expect(player.stats.impostorWins).toBe(0);
+      } else {
+        expect(player.stats.citizenWins).toBe(1);
+        expect(player.stats.citizenLosses).toBe(0);
+      }
+    }
+    expect(players.every(player => player.stats.gamesPlayed === 0)).toBe(true);
+  });
+
+  it("records an impostor win when the vote misses", () => {
+    const players = makePlayers(3);
+    const game = createGame(players, makeSettings(1));
+    game.accusedIds = [game.players.find(player => !game.impostorIds.includes(player.id))!.id];
+
+    const updated = recordGameResult(players, game);
+    const impostor = updated.find(player => game.impostorIds.includes(player.id))!;
+    const citizen = updated.find(player => !game.impostorIds.includes(player.id))!;
+
+    expect(impostor.stats.impostorWins).toBe(1);
+    expect(citizen.stats.citizenLosses).toBe(1);
   });
 });

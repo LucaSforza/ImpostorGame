@@ -1,6 +1,6 @@
 import './style.css';
-import { loadData, saveData, type AppData, type Player } from './db';
-import { createGame, localizeEntry, maxImpostors, citizensWin, type Game } from './game';
+import { emptyPlayerStats, loadData, saveData, type AppData, type Player, type PlayerStats } from './db';
+import { createGame, localizeEntry, maxImpostors, citizensWin, recordGameResult, type Game } from './game';
 import { categoryDescription, categoryLabel, translate, type MessageKey, type MessageParams } from './i18n';
 import { categories, normalizeCategorySelection, selectedCategoryIds, type CategoryId, type SelectableCategoryId } from './words';
 import avatar01 from './assets/avatars/avatar-01.webp';
@@ -74,6 +74,7 @@ let categoryScreen = false;
 let dialog: 'player' | 'rules' | 'exit' | 'delete' | null = null;
 let chosenAvatar: string = avatars[0][0];
 let draftName = '';
+let draftStats: PlayerStats = emptyPlayerStats();
 let editingPlayerId: string | null = null;
 let deletingPlayerId: string | null = null;
 let photoError = '';
@@ -95,10 +96,18 @@ const avatarArt = (value: string) => {
   return `<img class="character-art${photo ? ' photo' : ''}" src="${escape(photo ? value : avatarSource(value))}" alt=""/>`;
 };
 
+function playerStatsSummary(player: Player): string {
+  const stats = player.stats ?? emptyPlayerStats();
+  const wins = stats.citizenWins + stats.impostorWins;
+  const rate = stats.gamesPlayed ? (wins / stats.gamesPlayed) * 100 : 0;
+  const formattedRate = new Intl.NumberFormat(data.language, { maximumFractionDigits: 1 }).format(rate);
+  return t('stats.summary', { played: stats.gamesPlayed, rate: formattedRate });
+}
+
 function playerCard(p: Player): string {
   const included = data.selectedIds.includes(p.id);
   const disabled = busy || !storageReady;
-  return `<div class="player-row"><button class="player ${included ? 'selected' : ''}" data-player="${p.id}" aria-pressed="${included}" ${disabled ? 'disabled' : ''}>${avatar(p)}<span>${escape(p.name)}</span><span class="check" aria-hidden="true">${included ? '✓' : '+'}</span></button><div class="player-actions"><button type="button" class="player-action" data-action="edit-player" data-player="${p.id}" aria-label="${t('action.edit')} ${escape(p.name)}" ${disabled ? 'disabled' : ''}>${t('action.edit')}</button><button type="button" class="player-action danger" data-action="delete-player" data-player="${p.id}" aria-label="${t('action.delete')} ${escape(p.name)}" ${disabled ? 'disabled' : ''}>${t('action.delete')}</button></div></div>`;
+  return `<div class="player-row"><button class="player ${included ? 'selected' : ''}" data-player="${p.id}" aria-pressed="${included}" ${disabled ? 'disabled' : ''}>${avatar(p)}<span class="player-copy"><span class="player-name">${escape(p.name)}</span><span class="player-stats">${playerStatsSummary(p)}</span></span><span class="check" aria-hidden="true">${included ? '✓' : '+'}</span></button><div class="player-actions"><button type="button" class="player-action" data-action="edit-player" data-player="${p.id}" aria-label="${t('action.edit')} ${escape(p.name)}" ${disabled ? 'disabled' : ''}>${t('action.edit')}</button><button type="button" class="player-action danger" data-action="delete-player" data-player="${p.id}" aria-label="${t('action.delete')} ${escape(p.name)}" ${disabled ? 'disabled' : ''}>${t('action.delete')}</button></div></div>`;
 }
 
 async function change(update: (next: AppData<Game>) => void): Promise<void> {
@@ -181,7 +190,21 @@ function playerDialogView(): string {
   const title = editing ? t('player.editTitle') : t('player.newTitle');
   const helper = editing ? t('player.editHelper') : t('player.newHelper');
   const submit = editing ? t('player.saveChanges') : t('player.add');
-  return `<h2 id="dialog-title">${title}</h2><p class="helper">${helper}</p><form id="player-form"><label for="name">${t('player.nameLabel')}</label><input id="name" name="name" placeholder="${t('player.namePlaceholder')}" value="${escape(draftName)}" maxlength="24" required autocomplete="off"/><span class="field-label">${t('player.avatarLabel')}</span><div class="avatar-upload">${avatarMarkup(chosenAvatar, 'avatar-preview')}<div><label class="upload-label" for="avatar-upload">${t('player.upload')}</label><input id="avatar-upload" type="file" accept="image/*" capture="user"/></div></div><p class="upload-hint">${t('player.photoHint')}</p><button type="button" class="avatar-random" data-action="random-avatar">${t('player.randomAvatar')}</button><div class="avatar-picker">${avatars.map(([id, label], index) => `<button type="button" data-avatar="${id}" aria-label="${t('player.avatar', { index: index + 1, name: label })}" aria-pressed="${id === chosenAvatar}" class="${id === chosenAvatar ? 'chosen' : ''}">${avatarMarkup(id)}</button>`).join('')}</div><p id="form-error" class="error" role="alert"></p><p class="error upload-error" role="alert">${escape(photoError)}</p><button class="primary" type="submit">${submit} <span>${editing ? '✓' : '＋'}</span></button></form>`;
+  const stats = draftStats;
+  return `<h2 id="dialog-title">${title}</h2><p class="helper">${helper}</p><form id="player-form"><label for="name">${t('player.nameLabel')}</label><input id="name" name="name" placeholder="${t('player.namePlaceholder')}" value="${escape(draftName)}" maxlength="24" required autocomplete="off"/><span class="field-label">${t('player.avatarLabel')}</span><div class="avatar-upload">${avatarMarkup(chosenAvatar, 'avatar-preview')}<div><label class="upload-label" for="avatar-upload">${t('player.upload')}</label><input id="avatar-upload" type="file" accept="image/*" capture="user"/></div></div><p class="upload-hint">${t('player.photoHint')}</p><button type="button" class="avatar-random" data-action="random-avatar">${t('player.randomAvatar')}</button><div class="avatar-picker">${avatars.map(([id, label], index) => `<button type="button" data-avatar="${id}" aria-label="${t('player.avatar', { index: index + 1, name: label })}" aria-pressed="${id === chosenAvatar}" class="${id === chosenAvatar ? 'chosen' : ''}">${avatarMarkup(id)}</button>`).join('')}</div><fieldset class="stats-editor"><legend>${t('stats.editorTitle')}</legend><p class="stats-helper">${t('stats.editorHelper')}</p><label for="stats-gamesPlayed">${t('stats.gamesPlayed')}</label><input id="stats-gamesPlayed" data-stat="gamesPlayed" type="number" min="0" step="1" value="${stats.gamesPlayed}" required/><label for="stats-citizenWins">${t('stats.citizenWins')}</label><input id="stats-citizenWins" data-stat="citizenWins" type="number" min="0" step="1" value="${stats.citizenWins}" required/><label for="stats-citizenLosses">${t('stats.citizenLosses')}</label><input id="stats-citizenLosses" data-stat="citizenLosses" type="number" min="0" step="1" value="${stats.citizenLosses}" required/><label for="stats-impostorWins">${t('stats.impostorWins')}</label><input id="stats-impostorWins" data-stat="impostorWins" type="number" min="0" step="1" value="${stats.impostorWins}" required/><label for="stats-impostorLosses">${t('stats.impostorLosses')}</label><input id="stats-impostorLosses" data-stat="impostorLosses" type="number" min="0" step="1" value="${stats.impostorLosses}" required/></fieldset><p id="form-error" class="error" role="alert"></p><p class="error upload-error" role="alert">${escape(photoError)}</p><button class="primary" type="submit">${submit} <span>${editing ? '✓' : '＋'}</span></button></form>`;
+}
+
+function readDraftStats(): PlayerStats | null {
+  const keys: (keyof PlayerStats)[] = ['gamesPlayed', 'citizenWins', 'citizenLosses', 'impostorWins', 'impostorLosses'];
+  const values = {} as PlayerStats;
+  for (const key of keys) {
+    const input = root.querySelector<HTMLInputElement>(`[data-stat="${key}"]`);
+    const value = Number(input?.value);
+    if (!input || !Number.isSafeInteger(value) || value < 0) return null;
+    values[key] = value;
+  }
+  const outcomes = values.citizenWins + values.citizenLosses + values.impostorWins + values.impostorLosses;
+  return values.gamesPlayed >= outcomes ? values : null;
 }
 
 function deleteDialogView(): string {
@@ -235,7 +258,12 @@ function readAvatarPhoto(file: File): Promise<string> {
   });
 }
 
-root.addEventListener('input', e => { if ((e.target as HTMLElement).id === 'name') draftName = (e.target as HTMLInputElement).value; });
+root.addEventListener('input', e => {
+  const target = e.target as HTMLInputElement;
+  if (target.id === 'name') draftName = target.value;
+  const stat = target.dataset.stat as keyof PlayerStats | undefined;
+  if (stat && stat in draftStats) draftStats[stat] = Number(target.value) || 0;
+});
 root.addEventListener('change', e => {
   const target = e.target as HTMLInputElement | HTMLSelectElement;
   if (target.id === 'avatar-upload') {
@@ -251,13 +279,18 @@ root.addEventListener('submit', async e => {
     root.querySelector('#form-error')!.textContent = t('error.uniqueName');
     return;
   }
+  const stats = readDraftStats();
+  if (!stats) {
+    root.querySelector('#form-error')!.textContent = t('error.invalidStats');
+    return;
+  }
   const playerId = editingPlayerId;
   await change(d => {
     if (playerId) {
       const player = d.players.find(p => p.id === playerId);
-      if (player) { player.name = name; player.avatar = chosenAvatar; }
+      if (player) { player.name = name; player.avatar = chosenAvatar; player.stats = stats; }
     } else {
-      const player = { id: crypto.randomUUID(), name, avatar: chosenAvatar, createdAt: Date.now() };
+      const player = { id: crypto.randomUUID(), name, avatar: chosenAvatar, createdAt: Date.now(), stats };
       d.players.push(player);
       if (d.selectedIds.length < 20) d.selectedIds.push(player.id);
     }
@@ -292,6 +325,7 @@ root.addEventListener('click', async e => {
     editingPlayerId = player;
     deletingPlayerId = null;
     draftName = current.name;
+    draftStats = structuredClone(current.stats ?? emptyPlayerStats());
     chosenAvatar = isPhotoAvatar(current.avatar) ? current.avatar : resolveAvatar(current.avatar);
     photoError = '';
     dialog = 'player';
@@ -317,7 +351,7 @@ root.addEventListener('click', async e => {
     case 'retry': await init(); break;
     case 'language': revealed = false; await change(d => { d.language = d.language === 'it' ? 'en' : 'it'; }); break;
     case 'rules': revealed = false; dialog = 'rules'; render(); break;
-    case 'add': draftName = ''; editingPlayerId = null; deletingPlayerId = null; photoError = ''; chosenAvatar = avatars[Math.floor(Math.random() * avatars.length)][0]; dialog = 'player'; render(); break;
+    case 'add': draftName = ''; draftStats = emptyPlayerStats(); editingPlayerId = null; deletingPlayerId = null; photoError = ''; chosenAvatar = avatars[Math.floor(Math.random() * avatars.length)][0]; dialog = 'player'; render(); break;
     case 'close': dialog = null; editingPlayerId = null; deletingPlayerId = null; photoError = ''; render(); break;
     case 'confirm-delete': {
       const playerId = deletingPlayerId;
@@ -336,7 +370,7 @@ root.addEventListener('click', async e => {
     case 'reveal': revealCard(); break;
     case 'next': revealed = false; await change(d => { const g = d.activeGame!; if (g.revealIndex + 1 < g.players.length) g.revealIndex++; else g.phase = 'discuss'; }); window.scrollTo(0, 0); break;
     case 'vote': case 'discuss': await change(d => { d.activeGame!.phase = action; }); window.scrollTo(0, 0); break;
-    case 'result': await change(d => { const g = d.activeGame!; if (g.accusedIds.length === g.impostorIds.length) g.phase = 'result'; }); navigator.vibrate?.([30, 40, 30]); window.scrollTo(0, 0); break;
+    case 'result': await change(d => { const g = d.activeGame!; if (g.accusedIds.length === g.impostorIds.length) { g.phase = 'result'; if (!g.scoreRecorded) { d.players = recordGameResult(d.players, g); g.scoreRecorded = true; } } }); navigator.vibrate?.([30, 40, 30]); window.scrollTo(0, 0); break;
     case 'exit': revealed = false; dialog = 'exit'; editingPlayerId = null; deletingPlayerId = null; photoError = ''; render(); break;
     case 'home': categoryScreen = false; dialog = null; revealed = false; await change(d => { d.activeGame = null; }); window.scrollTo(0, 0); break;
   }
@@ -351,6 +385,13 @@ async function init() {
   try {
     const saved = await loadData<Game>();
     if (saved) data = saved;
+    if (data.activeGame?.phase === 'result' && !data.activeGame.scoreRecorded) {
+      const migrated = structuredClone(data);
+      migrated.players = recordGameResult(migrated.players, migrated.activeGame!);
+      migrated.activeGame!.scoreRecorded = true;
+      await saveData(migrated);
+      data = migrated;
+    }
     storageReady = true;
     error = '';
     if (!saved) await saveData(data);

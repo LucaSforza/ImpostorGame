@@ -20,7 +20,7 @@ describe("local game snapshot", () => {
 
   it("round-trips a structured-cloned snapshot", async () => {
     const data: AppData<{ round: number }> = {
-      players: [{ id: "p1", name: "Ada", avatar: "fox", createdAt: 123 }],
+      players: [{ id: "p1", name: "Ada", avatar: "fox", createdAt: 123, stats: { gamesPlayed: 2, citizenWins: 1, citizenLosses: 1, impostorWins: 0, impostorLosses: 0 } }],
       selectedIds: ["p1"],
       settings: { impostors: 1, category: "animals" },
       language: "it",
@@ -95,5 +95,22 @@ describe("local game snapshot", () => {
 
     await expect(loadData()).resolves.toBeNull();
     await expect(loadData()).resolves.toBeNull();
+  });
+
+  it("normalizes players from snapshots created before statistics", async () => {
+    const legacy = {
+      players: [{ id: "p1", name: "Ada", avatar: "fox", createdAt: 123 }],
+      selectedIds: ["p1"],
+      settings: { impostors: 1, category: "animals" },
+      language: "en",
+      activeGame: null,
+    } as unknown as AppData<null>;
+
+    await saveData(legacy);
+
+    await expect(loadData()).resolves.toEqual({
+      ...legacy,
+      players: [{ ...legacy.players[0], stats: { gamesPlayed: 0, citizenWins: 0, citizenLosses: 0, impostorWins: 0, impostorLosses: 0 } }],
+    });
   });
 });

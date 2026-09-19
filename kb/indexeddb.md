@@ -28,6 +28,14 @@ classDiagram
     +string name
     +string avatar
     +number createdAt
+    +PlayerStats stats
+  }
+  class PlayerStats {
+    +number gamesPlayed
+    +number citizenWins
+    +number citizenLosses
+    +number impostorWins
+    +number impostorLosses
   }
   class GameSettings {
     +number impostors
@@ -42,6 +50,7 @@ classDiagram
     +number revealIndex
     +string[] accusedIds
     +string starterId
+    +boolean scoreRecorded
   }
   class WordEntry {
     +string word
@@ -51,15 +60,16 @@ classDiagram
     +SelectableCategoryId category
   }
   AppData~Game~ "1" o-- "0..*" Player : players
+  Player "1" *-- "1" PlayerStats : stats
   AppData~Game~ "1" *-- "1" GameSettings : settings
   AppData~Game~ "1" o-- "0..1" Game : activeGame
   Game "1" o-- "3..20" Player : players
   Game "1" *-- "1" WordEntry : entry
 ```
 
-`AppData<Game>` is the complete snapshot written under the `current` key. `activeGame` may be `null`; when it contains a game, it allows the game to resume after a reload. `Game` has no locale field: the current `AppData.language` localizes its bilingual `WordEntry` at render time. The temporary flag that indicates whether a card is exposed is not part of this model and is not persisted.
+`AppData<Game>` is the complete snapshot written under the `current` key. `activeGame` may be `null`; when it contains a game, it allows the game to resume after a reload. `PlayerStats` stores games played plus wins/losses by role. Total wins, losses, role totals, and win percentage are derived for display. `Game.scoreRecorded` prevents a result from being counted twice after re-renders, reloads, or edits. `Game` has no locale field: the current `AppData.language` localizes its bilingual `WordEntry` at render time. The temporary flag that indicates whether a card is exposed is not part of this model and is not persisted.
 
-`loadData()` validates the current snapshot shape on read. Invalid snapshots, including old category-label values or invalid category arrays, are deleted and treated as absent. No IndexedDB version bump is needed because the stored value is a single application snapshot and invalid data is discarded before it reaches UI state.
+`loadData()` validates the current snapshot shape on read. Existing players without `stats` are accepted and normalized to zero counters; new writes always include the complete stats object. Invalid snapshots, including old category-label values, invalid category arrays, or malformed stats, are deleted and treated as absent. No IndexedDB version bump is needed because the stored value is a single application snapshot and compatibility normalization happens at the snapshot boundary.
 
 ## Data scope
 

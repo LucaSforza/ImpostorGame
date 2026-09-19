@@ -1,11 +1,20 @@
 import type { Locale } from './i18n';
 import { isCategorySelection, type CategorySelection } from './words';
 
+export interface PlayerStats {
+  gamesPlayed: number;
+  citizenWins: number;
+  citizenLosses: number;
+  impostorWins: number;
+  impostorLosses: number;
+}
+
 export interface Player {
   id: string;
   name: string;
   avatar: string;
   createdAt: number;
+  stats: PlayerStats;
 }
 
 export interface GameSettings {
@@ -82,12 +91,28 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function isPlayer(value: unknown): boolean {
+export function emptyPlayerStats(): PlayerStats {
+  return { gamesPlayed: 0, citizenWins: 0, citizenLosses: 0, impostorWins: 0, impostorLosses: 0 };
+}
+
+function isCounter(value: unknown): value is number {
+  return Number.isSafeInteger(value) && (value as number) >= 0;
+}
+
+function isPlayerStats(value: unknown): value is PlayerStats {
+  if (!isRecord(value)) return false;
+  const counters = [value.gamesPlayed, value.citizenWins, value.citizenLosses, value.impostorWins, value.impostorLosses];
+  return counters.every(isCounter)
+    && (value.citizenWins as number) + (value.citizenLosses as number) + (value.impostorWins as number) + (value.impostorLosses as number) <= (value.gamesPlayed as number);
+}
+
+function isPlayer(value: unknown): value is Record<string, unknown> {
   if (!isRecord(value)) return false;
   return typeof value.id === "string"
     && typeof value.name === "string"
     && typeof value.avatar === "string"
-    && typeof value.createdAt === "number";
+    && typeof value.createdAt === "number"
+    && (value.stats === undefined || isPlayerStats(value.stats));
 }
 
 function isActiveGame(value: unknown): boolean {
@@ -107,7 +132,14 @@ function isSnapshot<T>(value: unknown): value is AppData<T> {
 
 function validateSnapshot<T>(data: AppData<T>): AppData<T> {
   if (!isSnapshot<T>(data)) throw new Error("Invalid snapshot");
-  return structuredClone(data);
+  const cloned = structuredClone(data);
+  return {
+    ...cloned,
+    players: cloned.players.map((player) => ({
+      ...player,
+      stats: player.stats ?? emptyPlayerStats(),
+    })),
+  };
 }
 
 function deleteSnapshot(): Promise<void> {

@@ -1,4 +1,4 @@
-import type { Player, GameSettings } from './db';
+import { emptyPlayerStats, type Player, type GameSettings } from './db';
 import { categoryLabel, type Locale } from './i18n';
 import { isCategorySelection, normalizeCategory, selectedCategoryIds, words, type WordEntry } from './words';
 
@@ -11,6 +11,7 @@ export interface Game {
   revealIndex: number;
   accusedIds: string[];
   starterId: string;
+  scoreRecorded: boolean;
 }
 
 export interface LocalizedEntry {
@@ -43,7 +44,7 @@ export function createGame(players: Player[], settings: GameSettings, previousWo
     const j = randomIndex(i + 1);
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
-  return { id: crypto.randomUUID(), players: structuredClone(players), impostorIds: shuffled.slice(0, settings.impostors).map(p => p.id), entry: candidates[randomIndex(candidates.length)], phase: 'reveal', revealIndex: 0, accusedIds: [], starterId: players[randomIndex(players.length)].id };
+  return { id: crypto.randomUUID(), players: structuredClone(players), impostorIds: shuffled.slice(0, settings.impostors).map(p => p.id), entry: candidates[randomIndex(candidates.length)], phase: 'reveal', revealIndex: 0, accusedIds: [], starterId: players[randomIndex(players.length)].id, scoreRecorded: false };
 }
 
 export function localizeEntry(entry: WordEntry, locale: Locale): LocalizedEntry {
@@ -56,4 +57,26 @@ export function localizeEntry(entry: WordEntry, locale: Locale): LocalizedEntry 
 
 export function citizensWin(game: Game): boolean {
   return game.accusedIds.length === game.impostorIds.length && game.impostorIds.every(id => game.accusedIds.includes(id));
+}
+
+export function recordGameResult(players: Player[], game: Game): Player[] {
+  const crewWon = citizensWin(game);
+  const gamePlayerIds = new Set(game.players.map(player => player.id));
+  const impostorIds = new Set(game.impostorIds);
+
+  return players.map((player) => {
+    const currentStats = player.stats ?? emptyPlayerStats();
+    if (!gamePlayerIds.has(player.id)) return { ...player, stats: { ...currentStats } };
+    const impostor = impostorIds.has(player.id);
+    const won = impostor ? !crewWon : crewWon;
+    const stats = { ...currentStats, gamesPlayed: currentStats.gamesPlayed + 1 };
+    if (impostor) {
+      stats.impostorWins += won ? 1 : 0;
+      stats.impostorLosses += won ? 0 : 1;
+    } else {
+      stats.citizenWins += won ? 1 : 0;
+      stats.citizenLosses += won ? 0 : 1;
+    }
+    return { ...player, stats };
+  });
 }

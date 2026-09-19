@@ -21,3 +21,7 @@ During discussion, each player takes a turn saying a word related to the secret 
 The vote is collective: the group selects exactly as many suspects as there are impostors. The crew wins only when every impostor is among the accused and no innocent player is accused. In every other case, the impostors win. The result shows the word, the impostors, and the accused players.
 
 From the result screen, the group can start a rematch while keeping players and settings; the home screen allows players and rules to be changed. The active game is saved locally so it can be restored after a reload.
+
+## Player statistics
+
+When the result is revealed, every participant receives exactly one recorded game. The result winner receives a role-specific win; every other participant receives a role-specific loss. The profile stores total games played, citizen wins/losses, and impostor wins/losses. Citizen/impostor totals, overall wins/losses, and win percentage are derived. Existing snapshots without statistics are loaded with zeroed counters.

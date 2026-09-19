@@ -15,6 +15,6 @@ Validated in the Codex in-app browser using smartphone viewport overrides of 390
 - Validated mobile setup actions: character cards remain usable in a single-column layout; Edit opens prefilled name/avatar data; Delete opens an explicit confirmation dialog before removing a character.
 - Validated avatar rendering constraint: preset avatars and local photos use `object-fit: contain`; the reveal card preserves source aspect ratio and never stretches uploaded images. Upload input accepts gallery files and mobile camera capture.
 
-Automated checks: `npm test` (18 tests) and `npm run build`. Tests cover IndexedDB snapshot replacement, structured cloning, failure preservation, legacy snapshot migration; player/impostor limits, role uniqueness, stable category validation, consecutive-word exclusion, snapshot isolation, locale catalog/projections, and win conditions.
+Automated checks: `npm test` (19 tests) and `npm run build`. Tests cover IndexedDB snapshot replacement, structured cloning, failure preservation, invalid-snapshot deletion; player/impostor limits, role uniqueness, single- and multi-category validation, consecutive-word exclusion, snapshot isolation, locale catalog/projections, and win conditions.
 
 Browser-local data belongs to its origin. The development preview and public GitHub Pages site intentionally have separate databases. Runtime data is never committed to Git or uploaded during deployment.

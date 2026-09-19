@@ -1,6 +1,6 @@
 import type { Player, GameSettings } from './db';
 import { categoryLabel, type Locale } from './i18n';
-import { isCategoryId, normalizeCategory, words, type CategoryId, type WordEntry } from './words';
+import { isCategorySelection, normalizeCategory, selectedCategoryIds, words, type WordEntry } from './words';
 
 export interface Game {
   id: string;
@@ -34,9 +34,9 @@ function randomIndex(length: number): number {
 export function createGame(players: Player[], settings: GameSettings, previousWord?: string): Game {
   if (players.length < 3 || players.length > 20 || new Set(players.map(p => p.id)).size !== players.length) throw new Error('Invalid player count');
   if (!Number.isInteger(settings.impostors) || settings.impostors < 1 || settings.impostors > maxImpostors(players.length)) throw new Error('Invalid impostor count');
-  if (!isCategoryId(settings.category)) throw new Error('Invalid category');
-  const category: CategoryId = normalizeCategory(settings.category);
-  const candidates = words.filter(w => (category === 'all' || w.category === category) && w.word !== previousWord);
+  if (!isCategorySelection(settings.category)) throw new Error('Invalid category');
+  const selectedCategories = selectedCategoryIds(settings.category);
+  const candidates = words.filter(w => (selectedCategories === null || selectedCategories.includes(w.category)) && w.word !== previousWord);
   if (!candidates.length) throw new Error('Invalid category');
   const shuffled = [...players];
   for (let i = shuffled.length - 1; i > 0; i--) {

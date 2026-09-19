@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { afterEach, describe, expect, it } from "vitest";
-import { loadData, migrateSnapshot, saveData, type AppData } from "./db";
+import { loadData, saveData, type AppData } from "./db";
 
 const databaseName = "impostor-game";
 
@@ -82,19 +82,18 @@ describe("local game snapshot", () => {
     }
   });
 
-  it("migrates legacy language and category fields", () => {
-    const legacy = {
+  it("discards snapshots that do not match current contract", async () => {
+    const invalid = {
       players: [],
       selectedIds: [],
       settings: { impostors: 1, category: "Oggetti" },
       language: "en",
-      activeGame: { entry: { category: "Cibo" }, language: "it" },
-    } as unknown as AppData<{ entry: { category: string }; language: string }>;
+      activeGame: null,
+    } as unknown as AppData<null>;
 
-    const migrated = migrateSnapshot(legacy);
+    await saveData(invalid);
 
-    expect(migrated.settings.category).toBe("objects");
-    expect(migrated.activeGame?.entry.category).toBe("food");
-    expect(migrated.activeGame).not.toHaveProperty("language");
+    await expect(loadData()).resolves.toBeNull();
+    await expect(loadData()).resolves.toBeNull();
   });
 });

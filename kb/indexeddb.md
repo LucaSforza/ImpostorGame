@@ -8,7 +8,7 @@
 | Version | `1` |
 | Object store | `snapshot` |
 | Snapshot key | `current` |
-| Operations | `get("current")` for reads, `put(data, "current")` for writes |
+| Operations | `get("current")` for reads, `put(data, "current")` for writes, `delete("current")` for invalid snapshots |
 
 The database is opened only in the browser. During `onupgradeneeded`, `snapshot` is created if it does not exist; each transaction closes the connection when it finishes. Open, blocked, read, and write errors are propagated to the interface. If a write cannot be cloned, the transaction is aborted to preserve the previous snapshot.
 
@@ -31,7 +31,7 @@ classDiagram
   }
   class GameSettings {
     +number impostors
-    +CategoryId category
+    +CategorySelection category
   }
   class Game {
     +string id
@@ -48,7 +48,7 @@ classDiagram
     +string hint
     +string wordEn
     +string hintEn
-    +CategoryId category
+    +SelectableCategoryId category
   }
   AppData~Game~ "1" o-- "0..*" Player : players
   AppData~Game~ "1" *-- "1" GameSettings : settings
@@ -59,7 +59,7 @@ classDiagram
 
 `AppData<Game>` is the complete snapshot written under the `current` key. `activeGame` may be `null`; when it contains a game, it allows the game to resume after a reload. `Game` has no locale field: the current `AppData.language` localizes its bilingual `WordEntry` at render time. The temporary flag that indicates whether a card is exposed is not part of this model and is not persisted.
 
-`loadData()` normalizes legacy snapshots on read: Italian category labels (`Cibo`, `Luoghi`, `Oggetti`, `Animali`, `Sport`, `Cinema`) become stable IDs (`food`, `places`, `objects`, `animals`, `sport`, `cinema`), and legacy `activeGame.language` is discarded. No IndexedDB version bump is needed because the stored value is a single application snapshot and migration happens before it reaches UI state.
+`loadData()` validates the current snapshot shape on read. Invalid snapshots, including old category-label values or invalid category arrays, are deleted and treated as absent. No IndexedDB version bump is needed because the stored value is a single application snapshot and invalid data is discarded before it reaches UI state.
 
 ## Data scope
 

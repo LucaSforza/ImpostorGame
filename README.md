@@ -9,7 +9,8 @@ Play the live version at [lucasforza.github.io/ImpostorGame](https://lucasforza.
 ## Features
 
 - Italian and English interface and word deck.
-- 120 bilingual words across six categories.
+- 300 bilingual words across 15 categories, including youth slang, dating, trends, parties, film, and hobbies.
+- Visual category picker with single- or multi-category games.
 - 3–20 players with configurable impostor count.
 - Saved player profiles with illustrated avatars or device photos.
 - Private role reveal, discussion, collective vote, results, and rematches.
@@ -20,7 +21,7 @@ Play the live version at [lucasforza.github.io/ImpostorGame](https://lucasforza.
 ## How to play
 
 1. Add 3–20 players and select the players for the round.
-2. Choose the number of impostors and a word category.
+2. Choose the number of impostors and one or more word categories, or use the full deck.
 3. Pass the phone around. Crew members see the secret word; impostors see its hint.
 4. Take turns saying a word related to the secret without saying the secret itself.
 5. Vote together for exactly as many suspects as there are impostors.

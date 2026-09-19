@@ -1,8 +1,8 @@
 import './style.css';
 import { loadData, saveData, type AppData, type Player } from './db';
 import { createGame, localizeEntry, maxImpostors, citizensWin, type Game } from './game';
-import { categoryLabel, translate, type MessageKey, type MessageParams } from './i18n';
-import { categories, normalizeCategory, type CategoryId } from './words';
+import { categoryDescription, categoryLabel, translate, type MessageKey, type MessageParams } from './i18n';
+import { categories, normalizeCategorySelection, selectedCategoryIds, type CategoryId, type SelectableCategoryId } from './words';
 import avatar01 from './assets/avatars/avatar-01.webp';
 import avatar02 from './assets/avatars/avatar-02.webp';
 import avatar03 from './assets/avatars/avatar-03.webp';
@@ -19,6 +19,21 @@ import avatar13 from './assets/avatars/avatar-13.webp';
 import avatar14 from './assets/avatars/avatar-14.webp';
 import avatar15 from './assets/avatars/avatar-15.webp';
 import avatar16 from './assets/avatars/avatar-16.webp';
+import foodImage from './assets/categories/food.webp';
+import placesImage from './assets/categories/places.webp';
+import objectsImage from './assets/categories/objects.webp';
+import animalsImage from './assets/categories/animals.webp';
+import sportImage from './assets/categories/sport.webp';
+import cinemaImage from './assets/categories/cinema.webp';
+import slangImage from './assets/categories/slang-giovanile.webp';
+import boomerImage from './assets/categories/parole-boomer.webp';
+import datingImage from './assets/categories/dating.webp';
+import redFlagsImage from './assets/categories/red-flags.webp';
+import trendImage from './assets/categories/trend.webp';
+import partyChaosImage from './assets/categories/festa-e-caos.webp';
+import spicyPersonalImage from './assets/categories/piccante-e-personale.webp';
+import filmImage from './assets/categories/film.webp';
+import hobbyImage from './assets/categories/hobby.webp';
 
 const root = document.querySelector<HTMLDivElement>('#app')!;
 const avatars = [
@@ -28,6 +43,23 @@ const avatars = [
   ['avatar-13', 'Zefiro', avatar13], ['avatar-14', 'Radice', avatar14], ['avatar-15', 'Prisma', avatar15], ['avatar-16', 'Turbine', avatar16],
 ] as const;
 type AvatarId = typeof avatars[number][0];
+const categoryImages: Record<SelectableCategoryId, string> = {
+  food: foodImage,
+  places: placesImage,
+  objects: objectsImage,
+  animals: animalsImage,
+  sport: sportImage,
+  cinema: cinemaImage,
+  slang: slangImage,
+  boomer: boomerImage,
+  dating: datingImage,
+  red_flags: redFlagsImage,
+  trend: trendImage,
+  party_chaos: partyChaosImage,
+  spicy_personal: spicyPersonalImage,
+  film: filmImage,
+  hobby: hobbyImage,
+};
 const legacyAvatarMap: Record<string, AvatarId> = {
   '😎': 'avatar-01', '👽': 'avatar-02', '🦊': 'avatar-03', '👻': 'avatar-04',
   '🐸': 'avatar-05', '🤖': 'avatar-06', '🐼': 'avatar-07', '🦄': 'avatar-08',
@@ -83,6 +115,26 @@ async function change(update: (next: AppData<Game>) => void): Promise<void> {
   } finally { busy = false; render(); }
 }
 
+function categoryCard(category: 'all' | SelectableCategoryId): string {
+  const selection = normalizeCategorySelection(data.settings.category);
+  const selected = category === 'all'
+    ? selection === 'all'
+    : selection !== 'all' && (selectedCategoryIds(selection) ?? []).includes(category);
+  const art = category === 'all'
+    ? '<span class="category-all-art" aria-hidden="true">✦</span>'
+    : `<img src="${categoryImages[category]}" alt=""/>`;
+  const label = category === 'all' ? categoryName('all') : categoryName(category);
+  const description = category === 'all' ? t('category.description.all') : categoryDescription(data.language, category);
+  return `<button type="button" class="category-card ${selected ? 'selected' : ''}" data-category="${category}" aria-pressed="${selected}" ${busy ? 'disabled' : ''}>${art}<span class="category-card-copy"><strong>${label}</strong><small>${description}</small></span><span class="category-card-check" aria-hidden="true">${selected ? '✓' : '+'}</span></button>`;
+}
+
+function categoryPicker(): string {
+  const selection = normalizeCategorySelection(data.settings.category);
+  const selectedCount = selection === 'all' ? categories.length : (selectedCategoryIds(selection) ?? []).length;
+  const summaryKey = selection === 'all' ? 'category.selectedAll' : selectedCount === 1 ? 'category.selectedOne' : 'category.selectedMany';
+  return `<p class="category-hint">${t('category.selectHint')}</p><div class="category-picker" role="group" aria-label="${t('deck.title')}">${categoryCard('all')}${categories.map(categoryCard).join('')}</div><p class="category-summary">${t(summaryKey, { count: selectedCount })}</p>`;
+}
+
 function setup(): string {
   const count = data.selectedIds.length;
   return `<section class="cover"><div class="cover-art"></div><div class="cover-copy"><span class="eyebrow">${t('cover.eyebrow')}</span><h1>${t('cover.title')}</h1><p>${t('cover.subtitle')}</p></div><span class="cover-tag">${t('cover.tag')}</span><span class="spark">✦</span></section>
@@ -90,7 +142,7 @@ function setup(): string {
   ${data.players.length ? `<p class="helper">${t('setup.helper')}</p><div class="players">${data.players.map(playerCard).join('')}</div>` : `<div class="empty"><span>✦</span><p>${t('setup.empty')}</p></div>`}
   ${button('add', `＋ ${t('player.new')}`, 'secondary', !storageReady)}
   <div class="setting"><div><strong>${t('game.impostors')}</strong><small>${t('game.impostorHint')}</small></div><div class="stepper"><button data-action="minus" aria-label="${t('game.fewerImpostors')}" ${data.settings.impostors <= 1 || busy ? 'disabled' : ''}>−</button><b>${data.settings.impostors}</b><button data-action="plus" aria-label="${t('game.moreImpostors')}" ${data.settings.impostors >= maxImpostors(count) || busy ? 'disabled' : ''}>+</button></div></div>
-  <div class="setting"><label for="category"><strong>${t('deck.title')}</strong><small>${t('deck.subtitle')}</small></label><select id="category" ${busy ? 'disabled' : ''}>${['all', ...categories].map(c => `<option value="${c}" ${data.settings.category === c ? 'selected' : ''}>${categoryName(normalizeCategory(c))}</option>`).join('')}</select></div>
+  <div class="setting category-setting"><div class="category-setting-copy"><strong>${t('deck.title')}</strong><small>${t('deck.subtitle')}</small></div>${categoryPicker()}</div>
   ${button('start', `${t('game.start')} <span>↗</span>`, 'primary', count < 3 || !storageReady)}
   <p class="footnote">${count < 3 ? t(3 - count === 1 ? 'setup.morePlayersOne' : 'setup.morePlayersMany', { count: 3 - count }) : t('setup.passSecrets')}</p></section>`;
 }
@@ -174,7 +226,6 @@ function readAvatarPhoto(file: File): Promise<string> {
 root.addEventListener('input', e => { if ((e.target as HTMLElement).id === 'name') draftName = (e.target as HTMLInputElement).value; });
 root.addEventListener('change', e => {
   const target = e.target as HTMLInputElement | HTMLSelectElement;
-  if (target.id === 'category') { void change(d => { d.settings.category = normalizeCategory((target as HTMLSelectElement).value); }); return; }
   if (target.id === 'avatar-upload') {
     const file = (target as HTMLInputElement).files?.[0];
     if (!file) return;
@@ -204,9 +255,23 @@ root.addEventListener('submit', async e => {
 root.addEventListener('click', async e => {
   const target = (e.target as HTMLElement).closest<HTMLButtonElement>('button');
   if (!target || target.disabled || busy) return;
-  const { action, player, avatar: pick, accuse } = target.dataset;
+  const { action, player, avatar: pick, accuse, category } = target.dataset;
   if (pick && avatars.some(([id]) => id === pick)) { chosenAvatar = pick as AvatarId; photoError = ''; render(); return; }
   if (action === 'random-avatar') { chosenAvatar = avatars[Math.floor(Math.random() * avatars.length)][0]; photoError = ''; render(); return; }
+  if (category && (category === 'all' || categories.includes(category as SelectableCategoryId))) {
+    await change(d => {
+      if (category === 'all') {
+        d.settings.category = 'all';
+        return;
+      }
+      const current = selectedCategoryIds(normalizeCategorySelection(d.settings.category)) ?? [];
+      const next = current.includes(category as SelectableCategoryId)
+        ? current.filter(item => item !== category)
+        : [...current, category as SelectableCategoryId];
+      d.settings.category = next.length === 0 ? 'all' : next.length === 1 ? next[0] : next;
+    });
+    return;
+  }
   if (action === 'edit-player' && player) {
     const current = data.players.find(p => p.id === player);
     if (!current) return;
@@ -295,7 +360,8 @@ if (modelContext) {
       annotations: { readOnlyHint: true, untrustedContentHint: false },
       execute(input: unknown) {
         if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).length) throw new Error('Expected an empty object');
-        return { language: data.language, selectedPlayers: data.selectedIds.length, impostors: data.settings.impostors, categoryId: data.settings.category, categoryLabel: categoryLabel(data.language, data.settings.category), phase: data.activeGame?.phase ?? 'setup', storageReady };
+        const selected = selectedCategoryIds(normalizeCategorySelection(data.settings.category)) ?? categories;
+        return { language: data.language, selectedPlayers: data.selectedIds.length, impostors: data.settings.impostors, categorySelection: data.settings.category, categoryLabels: selected.map(category => categoryLabel(data.language, category)), phase: data.activeGame?.phase ?? 'setup', storageReady };
       },
     }, { signal: lifecycle.signal })).catch(() => console.warn('Game setup tool registration unavailable'));
   } catch { console.warn('Game setup tool registration unavailable'); }

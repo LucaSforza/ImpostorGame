@@ -1,5 +1,5 @@
-import { normalizeLocale, type Locale } from './i18n';
-import { normalizeCategory, type CategoryId } from './words';
+import type { Locale } from './i18n';
+import { isCategorySelection, type CategorySelection } from './words';
 
 export interface Player {
   id: string;
@@ -10,7 +10,7 @@ export interface Player {
 
 export interface GameSettings {
   impostors: number;
-  category: CategoryId;
+  category: CategorySelection;
 }
 
 export interface AppData<T> {
@@ -78,20 +78,46 @@ function transactionError(transaction: IDBTransaction, fallback: string): Error 
   return transaction.error ?? new Error(fallback);
 }
 
-export function migrateSnapshot<T>(data: AppData<T>): AppData<T> {
-  const next = structuredClone(data);
-  next.language = normalizeLocale(next.language);
-  next.settings.category = normalizeCategory(next.settings.category);
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 
-  const activeGame = next.activeGame as (T & {
-    entry?: { category?: unknown };
-    language?: unknown;
-  }) | null;
-  if (activeGame) {
-    if (activeGame.entry) activeGame.entry.category = normalizeCategory(activeGame.entry.category);
-    delete activeGame.language;
-  }
-  return next;
+function isPlayer(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  return typeof value.id === "string"
+    && typeof value.name === "string"
+    && typeof value.avatar === "string"
+    && typeof value.createdAt === "number";
+}
+
+function isActiveGame(value: unknown): boolean {
+  return value === null || isRecord(value);
+}
+
+function isSnapshot<T>(value: unknown): value is AppData<T> {
+  if (!isRecord(value)) return false;
+  if (!Array.isArray(value.players) || !value.players.every(isPlayer)) return false;
+  if (!Array.isArray(value.selectedIds) || !value.selectedIds.every((id) => typeof id === "string")) return false;
+  if (!isRecord(value.settings)) return false;
+  return Number.isInteger(value.settings.impostors)
+    && isCategorySelection(value.settings.category)
+    && (value.language === "it" || value.language === "en")
+    && isActiveGame(value.activeGame);
+}
+
+function validateSnapshot<T>(data: AppData<T>): AppData<T> {
+  if (!isSnapshot<T>(data)) throw new Error("Invalid snapshot");
+  return structuredClone(data);
+}
+
+function deleteSnapshot(): Promise<void> {
+  return openDatabase().then((database) => new Promise<void>((resolve, reject) => {
+    const transaction = database.transaction(STORE_NAME, "readwrite");
+    transaction.oncomplete = () => { database.close(); resolve(); };
+    transaction.onerror = () => { database.close(); reject(transactionError(transaction, "IndexedDB delete transaction failed")); };
+    transaction.onabort = () => { database.close(); reject(transactionError(transaction, "IndexedDB delete transaction aborted")); };
+    transaction.objectStore(STORE_NAME).delete(SNAPSHOT_KEY);
+  }));
 }
 
 export function loadData<T>(): Promise<AppData<T> | null> {
@@ -99,6 +125,7 @@ export function loadData<T>(): Promise<AppData<T> | null> {
     (database) =>
       new Promise<AppData<T> | null>((resolve, reject) => {
         let snapshot: AppData<T> | null = null;
+        let invalid = false;
 
         let transaction: IDBTransaction;
         try {
@@ -113,12 +140,21 @@ export function loadData<T>(): Promise<AppData<T> | null> {
         const request = store.get(SNAPSHOT_KEY);
         request.onsuccess = () => {
           const stored = (request.result as AppData<T> | undefined) ?? null;
-          snapshot = stored ? migrateSnapshot(stored) : null;
+          if (!stored) return;
+          try {
+            snapshot = validateSnapshot(stored);
+          } catch {
+            invalid = true;
+          }
         };
         request.onerror = () => reject(request.error ?? new Error("IndexedDB read failed"));
         transaction.oncomplete = () => {
           database.close();
-          resolve(snapshot);
+          if (invalid) {
+            deleteSnapshot().then(() => resolve(null), reject);
+          } else {
+            resolve(snapshot);
+          }
         };
         transaction.onerror = () => {
           database.close();

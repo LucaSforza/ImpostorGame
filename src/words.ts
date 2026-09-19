@@ -3,7 +3,7 @@ export type WordEntry = {
   hint: string;
   wordEn: string;
   hintEn: string;
-  category: CategoryId;
+  category: SelectableCategoryId;
 };
 
 export const categories = [
@@ -13,32 +13,70 @@ export const categories = [
   "animals",
   "sport",
   "cinema",
+  "slang",
+  "boomer",
+  "dating",
+  "red_flags",
+  "trend",
+  "party_chaos",
+  "spicy_personal",
+  "film",
+  "hobby",
 ] as const;
 
 export type CategoryId = "all" | typeof categories[number];
+export type SelectableCategoryId = typeof categories[number];
+export type CategorySelection = "all" | SelectableCategoryId | SelectableCategoryId[];
 
-const legacyCategoryIds: Record<string, CategoryId> = {
+const categoryIds: Record<string, CategoryId> = {
   all: "all",
-  Cibo: "food",
-  Luoghi: "places",
-  Oggetti: "objects",
-  Animali: "animals",
-  Sport: "sport",
-  Cinema: "cinema",
   food: "food",
   places: "places",
   objects: "objects",
   animals: "animals",
   sport: "sport",
   cinema: "cinema",
+  slang: "slang",
+  boomer: "boomer",
+  dating: "dating",
+  red_flags: "red_flags",
+  trend: "trend",
+  party_chaos: "party_chaos",
+  spicy_personal: "spicy_personal",
+  film: "film",
+  hobby: "hobby",
 };
 
 export function normalizeCategory(value: unknown): CategoryId {
-  return typeof value === "string" ? legacyCategoryIds[value] ?? "all" : "all";
+  return typeof value === "string" ? categoryIds[value] ?? "all" : "all";
 }
 
 export function isCategoryId(value: unknown): value is CategoryId {
   return value === "all" || (typeof value === "string" && categories.includes(value as typeof categories[number]));
+}
+
+export function normalizeCategorySelection(value: unknown): CategorySelection {
+  if (value === "all") return "all";
+  if (Array.isArray(value)) {
+    const normalized = [...new Set(value.filter((item): item is SelectableCategoryId => isCategoryId(item) && item !== "all"))];
+    return normalized.length ? normalized : "all";
+  }
+  const category = normalizeCategory(value);
+  return category === "all" ? "all" : category;
+}
+
+export function isCategorySelection(value: unknown): value is CategorySelection {
+  if (value === "all") return true;
+  if (typeof value === "string") return isCategoryId(value) && value !== "all";
+  return Array.isArray(value)
+    && value.length > 0
+    && new Set(value).size === value.length
+    && value.every((item): item is SelectableCategoryId => isCategoryId(item) && item !== "all");
+}
+
+export function selectedCategoryIds(value: CategorySelection): SelectableCategoryId[] | null {
+  const selection = normalizeCategorySelection(value);
+  return selection === "all" ? null : Array.isArray(selection) ? selection : [selection];
 }
 
 export const words: WordEntry[] = [
@@ -173,4 +211,202 @@ export const words: WordEntry[] = [
   { word: "pirata", hint: "tesoro", wordEn: "pirate", hintEn: "treasure", category: "cinema" },
   { word: "principessa", hint: "castello", wordEn: "princess", hintEn: "castle", category: "cinema" },
   { word: "supereroe", hint: "maschera", wordEn: "superhero", hintEn: "mask", category: "cinema" },
+
+  // Slang giovanile
+  { word: "aura", hint: "carisma", wordEn: "aura", hintEn: "charisma", category: "slang" },
+  { word: "lowkey", hint: "discreto", wordEn: "lowkey", hintEn: "subtle", category: "slang" },
+  { word: "cringe", hint: "imbarazzo", wordEn: "cringe", hintEn: "awkwardness", category: "slang" },
+  { word: "ghostare", hint: "sparire", wordEn: "ghosting", hintEn: "disappearing", category: "slang" },
+  { word: "flexare", hint: "vantarsi", wordEn: "flexing", hintEn: "showing off", category: "slang" },
+  { word: "bro", hint: "amico", wordEn: "bro", hintEn: "friend", category: "slang" },
+  { word: "mood", hint: "stato", wordEn: "mood", hintEn: "feeling", category: "slang" },
+  { word: "ship", hint: "coppia", wordEn: "ship", hintEn: "couple", category: "slang" },
+  { word: "simp", hint: "ammiratore", wordEn: "simp", hintEn: "admirer", category: "slang" },
+  { word: "slay", hint: "successo", wordEn: "slay", hintEn: "success", category: "slang" },
+  { word: "ghosting", hint: "silenzio", wordEn: "ghosting", hintEn: "silence", category: "slang" },
+  { word: "vibe", hint: "energia", wordEn: "vibe", hintEn: "energy", category: "slang" },
+  { word: "main character", hint: "protagonista", wordEn: "main character", hintEn: "protagonist", category: "slang" },
+  { word: "delulu", hint: "illusione", wordEn: "delulu", hintEn: "illusion", category: "slang" },
+  { word: "rizz", hint: "fascino", wordEn: "rizz", hintEn: "charm", category: "slang" },
+  { word: "yapping", hint: "parlare", wordEn: "yapping", hintEn: "talking", category: "slang" },
+  { word: "NPC", hint: "automatico", wordEn: "NPC", hintEn: "automatic", category: "slang" },
+  { word: "touch grass", hint: "realtà", wordEn: "touch grass", hintEn: "reality", category: "slang" },
+  { word: "stan", hint: "fan", wordEn: "stan", hintEn: "fan", category: "slang" },
+  { word: "POV", hint: "prospettiva", wordEn: "POV", hintEn: "perspective", category: "slang" },
+
+  // Parole boomer
+  { word: "fax", hint: "ufficio", wordEn: "fax", hintEn: "office", category: "boomer" },
+  { word: "videocassetta", hint: "riavvolgere", wordEn: "videotape", hintEn: "rewind", category: "boomer" },
+  { word: "guida TV", hint: "programmi", wordEn: "TV guide", hintEn: "shows", category: "boomer" },
+  { word: "gettoni", hint: "telefono", wordEn: "phone tokens", hintEn: "telephone", category: "boomer" },
+  { word: "mangiadischi", hint: "musica", wordEn: "record player", hintEn: "music", category: "boomer" },
+  { word: "enciclopedia", hint: "scaffale", wordEn: "encyclopedia", hintEn: "shelf", category: "boomer" },
+  { word: "telefono fisso", hint: "cornetta", wordEn: "landline", hintEn: "handset", category: "boomer" },
+  { word: "rullino", hint: "fotografie", wordEn: "film roll", hintEn: "photographs", category: "boomer" },
+  { word: "telescrivente", hint: "messaggio", wordEn: "teletype", hintEn: "message", category: "boomer" },
+  { word: "telecomando", hint: "divano", wordEn: "remote control", hintEn: "sofa", category: "boomer" },
+  { word: "gettoniera", hint: "cabina", wordEn: "coin slot", hintEn: "booth", category: "boomer" },
+  { word: "musicassetta", hint: "matita", wordEn: "mixtape", hintEn: "pencil", category: "boomer" },
+  { word: "videoregistratore", hint: "cassette", wordEn: "VCR", hintEn: "tapes", category: "boomer" },
+  { word: "cartolina", hint: "vacanza", wordEn: "postcard", hintEn: "holiday", category: "boomer" },
+  { word: "lettera", hint: "francobollo", wordEn: "letter", hintEn: "stamp", category: "boomer" },
+  { word: "rubrica", hint: "contatti", wordEn: "address book", hintEn: "contacts", category: "boomer" },
+  { word: "cabina telefonica", hint: "strada", wordEn: "phone booth", hintEn: "street", category: "boomer" },
+  { word: "juke-box", hint: "bar", wordEn: "jukebox", hintEn: "bar", category: "boomer" },
+  { word: "televideo", hint: "pagina", wordEn: "teletext", hintEn: "page", category: "boomer" },
+  { word: "agenda", hint: "appunti", wordEn: "planner", hintEn: "notes", category: "boomer" },
+
+  // Dating
+  { word: "match", hint: "app", wordEn: "match", hintEn: "app", category: "dating" },
+  { word: "primo appuntamento", hint: "ansia", wordEn: "first date", hintEn: "nerves", category: "dating" },
+  { word: "profilo", hint: "foto", wordEn: "profile", hintEn: "photo", category: "dating" },
+  { word: "messaggino", hint: "notifica", wordEn: "text message", hintEn: "notification", category: "dating" },
+  { word: "flirt", hint: "sorriso", wordEn: "flirting", hintEn: "smile", category: "dating" },
+  { word: "chimica", hint: "intesa", wordEn: "chemistry", hintEn: "connection", category: "dating" },
+  { word: "cena romantica", hint: "candela", wordEn: "romantic dinner", hintEn: "candle", category: "dating" },
+  { word: "cuore", hint: "battito", wordEn: "heart", hintEn: "heartbeat", category: "dating" },
+  { word: "serata", hint: "insieme", wordEn: "evening", hintEn: "together", category: "dating" },
+  { word: "cotta", hint: "farfalle", wordEn: "crush", hintEn: "butterflies", category: "dating" },
+  { word: "relazione", hint: "coppia", wordEn: "relationship", hintEn: "couple", category: "dating" },
+  { word: "romanticismo", hint: "gesto", wordEn: "romance", hintEn: "gesture", category: "dating" },
+  { word: "complicità", hint: "sguardo", wordEn: "complicity", hintEn: "look", category: "dating" },
+  { word: "invito", hint: "uscita", wordEn: "invitation", hintEn: "outing", category: "dating" },
+  { word: "ghosting", hint: "silenzio", wordEn: "ghosting", hintEn: "silence", category: "dating" },
+  { word: "secondo appuntamento", hint: "speranza", wordEn: "second date", hintEn: "hope", category: "dating" },
+  { word: "gelosia", hint: "possesso", wordEn: "jealousy", hintEn: "possessiveness", category: "dating" },
+  { word: "red flag", hint: "allarme", wordEn: "red flag", hintEn: "warning", category: "dating" },
+  { word: "green flag", hint: "fiducia", wordEn: "green flag", hintEn: "trust", category: "dating" },
+  { word: "amore", hint: "affetto", wordEn: "love", hintEn: "affection", category: "dating" },
+
+  // Red flags
+  { word: "gelosia", hint: "controllo", wordEn: "jealousy", hintEn: "control", category: "red_flags" },
+  { word: "ghosting", hint: "sparizione", wordEn: "ghosting", hintEn: "disappearing", category: "red_flags" },
+  { word: "bugia", hint: "fiducia", wordEn: "lie", hintEn: "trust", category: "red_flags" },
+  { word: "controllo", hint: "password", wordEn: "control", hintEn: "password", category: "red_flags" },
+  { word: "possessività", hint: "confine", wordEn: "possessiveness", hintEn: "boundary", category: "red_flags" },
+  { word: "manipolazione", hint: "colpa", wordEn: "manipulation", hintEn: "guilt", category: "red_flags" },
+  { word: "insulto", hint: "rispetto", wordEn: "insult", hintEn: "respect", category: "red_flags" },
+  { word: "scusa", hint: "errore", wordEn: "apology", hintEn: "mistake", category: "red_flags" },
+  { word: "silenzio punitivo", hint: "muro", wordEn: "silent treatment", hintEn: "wall", category: "red_flags" },
+  { word: "doppio standard", hint: "regola", wordEn: "double standard", hintEn: "rule", category: "red_flags" },
+  { word: "promessa vuota", hint: "parole", wordEn: "empty promise", hintEn: "words", category: "red_flags" },
+  { word: "dramma", hint: "litigio", wordEn: "drama", hintEn: "argument", category: "red_flags" },
+  { word: "egoismo", hint: "io", wordEn: "selfishness", hintEn: "me", category: "red_flags" },
+  { word: "invidia", hint: "confronto", wordEn: "envy", hintEn: "comparison", category: "red_flags" },
+  { word: "ricatto", hint: "minaccia", wordEn: "blackmail", hintEn: "threat", category: "red_flags" },
+  { word: "sospetto", hint: "dubbio", wordEn: "suspicion", hintEn: "doubt", category: "red_flags" },
+  { word: "toxicità", hint: "veleno", wordEn: "toxicity", hintEn: "poison", category: "red_flags" },
+  { word: "confine", hint: "limite", wordEn: "boundary", hintEn: "limit", category: "red_flags" },
+  { word: "rispetto", hint: "cura", wordEn: "respect", hintEn: "care", category: "red_flags" },
+  { word: "allarme", hint: "segnale", wordEn: "warning", hintEn: "signal", category: "red_flags" },
+
+  // Trend
+  { word: "viralità", hint: "condivisione", wordEn: "virality", hintEn: "sharing", category: "trend" },
+  { word: "meme", hint: "risata", wordEn: "meme", hintEn: "laugh", category: "trend" },
+  { word: "challenge", hint: "prova", wordEn: "challenge", hintEn: "test", category: "trend" },
+  { word: "hashtag", hint: "cancelletto", wordEn: "hashtag", hintEn: "hash sign", category: "trend" },
+  { word: "influencer", hint: "seguito", wordEn: "influencer", hintEn: "followed", category: "trend" },
+  { word: "reel", hint: "video", wordEn: "reel", hintEn: "video", category: "trend" },
+  { word: "podcast", hint: "ascolto", wordEn: "podcast", hintEn: "listening", category: "trend" },
+  { word: "hype", hint: "attesa", wordEn: "hype", hintEn: "anticipation", category: "trend" },
+  { word: "follower", hint: "pubblico", wordEn: "follower", hintEn: "audience", category: "trend" },
+  { word: "commento", hint: "opinione", wordEn: "comment", hintEn: "opinion", category: "trend" },
+  { word: "algoritmo", hint: "feed", wordEn: "algorithm", hintEn: "feed", category: "trend" },
+  { word: "live", hint: "diretta", wordEn: "live stream", hintEn: "broadcast", category: "trend" },
+  { word: "notizia", hint: "attualità", wordEn: "news", hintEn: "current events", category: "trend" },
+  { word: "lancio", hint: "novità", wordEn: "launch", hintEn: "new release", category: "trend" },
+  { word: "copertina", hint: "immagine", wordEn: "cover", hintEn: "image", category: "trend" },
+  { word: "remix", hint: "versione", wordEn: "remix", hintEn: "version", category: "trend" },
+  { word: "fandom", hint: "fan", wordEn: "fandom", hintEn: "fans", category: "trend" },
+  { word: "tendenza", hint: "moda", wordEn: "trend", hintEn: "fashion", category: "trend" },
+  { word: "classifica", hint: "podio", wordEn: "ranking", hintEn: "podium", category: "trend" },
+  { word: "scoperta", hint: "novità", wordEn: "discovery", hintEn: "newness", category: "trend" },
+
+  // Festa e caos
+  { word: "ballo", hint: "musica", wordEn: "dance", hintEn: "music", category: "party_chaos" },
+  { word: "brindisi", hint: "bicchiere", wordEn: "toast", hintEn: "glass", category: "party_chaos" },
+  { word: "confetti", hint: "colori", wordEn: "confetti", hintEn: "colors", category: "party_chaos" },
+  { word: "karaoke", hint: "microfono", wordEn: "karaoke", hintEn: "microphone", category: "party_chaos" },
+  { word: "discoteca", hint: "luci", wordEn: "nightclub", hintEn: "lights", category: "party_chaos" },
+  { word: "compleanno", hint: "torta", wordEn: "birthday", hintEn: "cake", category: "party_chaos" },
+  { word: "sorpresa", hint: "regalo", wordEn: "surprise", hintEn: "gift", category: "party_chaos" },
+  { word: "battaglia", hint: "palloncini", wordEn: "battle", hintEn: "balloons", category: "party_chaos" },
+  { word: "sbronza", hint: "eccesso", wordEn: "hangover", hintEn: "excess", category: "party_chaos" },
+  { word: "dj", hint: "console", wordEn: "DJ", hintEn: "deck", category: "party_chaos" },
+  { word: "invito", hint: "lista", wordEn: "invitation", hintEn: "guest list", category: "party_chaos" },
+  { word: "notte", hint: "tardi", wordEn: "night", hintEn: "late", category: "party_chaos" },
+  { word: "banger", hint: "hit", wordEn: "banger", hintEn: "hit", category: "party_chaos" },
+  { word: "festone", hint: "decorazione", wordEn: "streamer", hintEn: "decoration", category: "party_chaos" },
+  { word: "braccialetto", hint: "ingresso", wordEn: "wristband", hintEn: "entry", category: "party_chaos" },
+  { word: "afterparty", hint: "continua", wordEn: "afterparty", hintEn: "continues", category: "party_chaos" },
+  { word: "folla", hint: "gente", wordEn: "crowd", hintEn: "people", category: "party_chaos" },
+  { word: "playlist", hint: "canzoni", wordEn: "playlist", hintEn: "songs", category: "party_chaos" },
+  { word: "risata", hint: "amicizia", wordEn: "laughter", hintEn: "friendship", category: "party_chaos" },
+  { word: "casino", hint: "confusione", wordEn: "chaos", hintEn: "confusion", category: "party_chaos" },
+
+  // Piccante e personale
+  { word: "segreto", hint: "confidenza", wordEn: "secret", hintEn: "confidence", category: "spicy_personal" },
+  { word: "flirt", hint: "sguardo", wordEn: "flirt", hintEn: "look", category: "spicy_personal" },
+  { word: "bacio", hint: "labbra", wordEn: "kiss", hintEn: "lips", category: "spicy_personal" },
+  { word: "crush", hint: "cotta", wordEn: "crush", hintEn: "infatuation", category: "spicy_personal" },
+  { word: "fantasia", hint: "immaginazione", wordEn: "fantasy", hintEn: "imagination", category: "spicy_personal" },
+  { word: "messaggio hot", hint: "telefono", wordEn: "spicy text", hintEn: "phone", category: "spicy_personal" },
+  { word: "intimità", hint: "vicinanza", wordEn: "intimacy", hintEn: "closeness", category: "spicy_personal" },
+  { word: "confessione", hint: "verità", wordEn: "confession", hintEn: "truth", category: "spicy_personal" },
+  { word: "seduzione", hint: "fascino", wordEn: "seduction", hintEn: "charm", category: "spicy_personal" },
+  { word: "appuntamento", hint: "incontro", wordEn: "date", hintEn: "meeting", category: "spicy_personal" },
+  { word: "soprannome", hint: "privato", wordEn: "nickname", hintEn: "private", category: "spicy_personal" },
+  { word: "sguardo", hint: "occhi", wordEn: "glance", hintEn: "eyes", category: "spicy_personal" },
+  { word: "tensione", hint: "scintilla", wordEn: "tension", hintEn: "spark", category: "spicy_personal" },
+  { word: "complicità", hint: "intesa", wordEn: "complicity", hintEn: "understanding", category: "spicy_personal" },
+  { word: "desiderio", hint: "voglia", wordEn: "desire", hintEn: "want", category: "spicy_personal" },
+  { word: "timidezza", hint: "rossore", wordEn: "shyness", hintEn: "blush", category: "spicy_personal" },
+  { word: "provocazione", hint: "scherzo", wordEn: "tease", hintEn: "joke", category: "spicy_personal" },
+  { word: "confidenza", hint: "fiducia", wordEn: "confidence", hintEn: "trust", category: "spicy_personal" },
+  { word: "gelosia", hint: "possesso", wordEn: "jealousy", hintEn: "possessiveness", category: "spicy_personal" },
+  { word: "red flag", hint: "allarme", wordEn: "red flag", hintEn: "warning", category: "spicy_personal" },
+
+  // Film
+  { word: "blockbuster", hint: "successo", wordEn: "blockbuster", hintEn: "hit", category: "film" },
+  { word: "commedia", hint: "risata", wordEn: "comedy", hintEn: "laugh", category: "film" },
+  { word: "horror", hint: "paura", wordEn: "horror", hintEn: "fear", category: "film" },
+  { word: "thriller", hint: "tensione", wordEn: "thriller", hintEn: "tension", category: "film" },
+  { word: "western", hint: "deserto", wordEn: "western", hintEn: "desert", category: "film" },
+  { word: "fantascienza", hint: "futuro", wordEn: "science fiction", hintEn: "future", category: "film" },
+  { word: "animazione", hint: "cartone", wordEn: "animation", hintEn: "cartoon", category: "film" },
+  { word: "documentario", hint: "realtà", wordEn: "documentary", hintEn: "reality", category: "film" },
+  { word: "sequel", hint: "seguito", wordEn: "sequel", hintEn: "follow-up", category: "film" },
+  { word: "remake", hint: "nuova versione", wordEn: "remake", hintEn: "new version", category: "film" },
+  { word: "colpo di scena", hint: "sorpresa", wordEn: "plot twist", hintEn: "surprise", category: "film" },
+  { word: "protagonista", hint: "eroe", wordEn: "protagonist", hintEn: "hero", category: "film" },
+  { word: "cattivo", hint: "nemico", wordEn: "villain", hintEn: "enemy", category: "film" },
+  { word: "finale", hint: "ultima scena", wordEn: "ending", hintEn: "last scene", category: "film" },
+  { word: "trailer", hint: "anteprima", wordEn: "trailer", hintEn: "preview", category: "film" },
+  { word: "première", hint: "red carpet", wordEn: "premiere", hintEn: "red carpet", category: "film" },
+  { word: "Oscar", hint: "statuetta", wordEn: "Oscar", hintEn: "statuette", category: "film" },
+  { word: "regia", hint: "camera", wordEn: "direction", hintEn: "camera", category: "film" },
+  { word: "sceneggiatura", hint: "copione", wordEn: "screenplay", hintEn: "script", category: "film" },
+  { word: "saga", hint: "capitoli", wordEn: "saga", hintEn: "chapters", category: "film" },
+
+  // Hobby
+  { word: "calcio", hint: "pallone", wordEn: "soccer", hintEn: "ball", category: "hobby" },
+  { word: "disegno", hint: "matita", wordEn: "drawing", hintEn: "pencil", category: "hobby" },
+  { word: "fotografia", hint: "obiettivo", wordEn: "photography", hintEn: "lens", category: "hobby" },
+  { word: "cucina", hint: "ricetta", wordEn: "cooking", hintEn: "recipe", category: "hobby" },
+  { word: "giardinaggio", hint: "pianta", wordEn: "gardening", hintEn: "plant", category: "hobby" },
+  { word: "lettura", hint: "libro", wordEn: "reading", hintEn: "book", category: "hobby" },
+  { word: "videogame", hint: "console", wordEn: "video game", hintEn: "console", category: "hobby" },
+  { word: "chitarra", hint: "corde", wordEn: "guitar", hintEn: "strings", category: "hobby" },
+  { word: "pittura", hint: "colore", wordEn: "painting", hintEn: "color", category: "hobby" },
+  { word: "puzzle", hint: "pezzi", wordEn: "puzzle", hintEn: "pieces", category: "hobby" },
+  { word: "collezione", hint: "oggetti", wordEn: "collection", hintEn: "items", category: "hobby" },
+  { word: "escursione", hint: "sentiero", wordEn: "hiking", hintEn: "trail", category: "hobby" },
+  { word: "ballo", hint: "ritmo", wordEn: "dancing", hintEn: "rhythm", category: "hobby" },
+  { word: "scrittura", hint: "storia", wordEn: "writing", hintEn: "story", category: "hobby" },
+  { word: "modellismo", hint: "miniatura", wordEn: "model building", hintEn: "miniature", category: "hobby" },
+  { word: "maglia", hint: "filo", wordEn: "knitting", hintEn: "yarn", category: "hobby" },
+  { word: "nuoto", hint: "piscina", wordEn: "swimming", hintEn: "pool", category: "hobby" },
+  { word: "skateboard", hint: "rampe", wordEn: "skateboarding", hintEn: "ramps", category: "hobby" },
+  { word: "podcast", hint: "microfono", wordEn: "podcast", hintEn: "microphone", category: "hobby" },
+  { word: "astronomia", hint: "stelle", wordEn: "astronomy", hintEn: "stars", category: "hobby" },
 ];

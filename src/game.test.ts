@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Player } from "./db";
 import { citizensWin, createGame, localizeEntry } from "./game";
-import type { CategoryId } from "./words";
+import type { CategorySelection } from "./words";
 
 function makePlayers(count: number): Player[] {
   return Array.from({ length: count }, (_, index) => ({
@@ -12,7 +12,7 @@ function makePlayers(count: number): Player[] {
   }));
 }
 
-function makeSettings(impostors: number, category: CategoryId = "all") {
+function makeSettings(impostors: number, category: CategorySelection = "all") {
   return { impostors, category };
 }
 
@@ -46,13 +46,19 @@ describe("createGame", () => {
   });
 
   it("rejects categories without words", () => {
-    expect(() => createGame(makePlayers(3), makeSettings(1, "Unknown" as CategoryId))).toThrow("Invalid category");
+    expect(() => createGame(makePlayers(3), makeSettings(1, "Unknown" as CategorySelection))).toThrow("Invalid category");
   });
 
   it("does not immediately repeat the previous word", () => {
     const game = createGame(makePlayers(3), makeSettings(1, "food"), "pizza");
 
     expect(game.entry.word).not.toBe("pizza");
+  });
+
+  it("draws from every selected category", () => {
+    const game = createGame(makePlayers(3), makeSettings(1, ["food", "sport"]));
+
+    expect(["food", "sport"]).toContain(game.entry.category);
   });
 
   it("keeps an isolated player snapshot", () => {

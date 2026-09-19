@@ -1,4 +1,8 @@
-# Game rules
+# Catalog game rules
+
+Pocket Circle offers Impostore, Bomba, and Stessa Onda. Saved player profiles are shared across all games. Each completed session records per-game statistics once; exiting before result records nothing.
+
+## Impostore
 
 ## Setup
 
@@ -23,6 +27,21 @@ The vote is collective: each session selects exactly one suspect. The selected c
 
 From the result screen, the group can start a rematch while keeping players and settings; the home screen allows players and rules to be changed. The active game is saved locally so it can be restored after a reload.
 
+## Bomba
+
+1. Select 2–20 players and one topic category or all categories.
+2. App chooses one bilingual topic and hidden random deadline between 20 and 45 seconds.
+3. Current player says valid unused answer aloud, taps `Detto`, and passes phone.
+4. Group resolves validity and duplicates; app only counts passes and changes holder.
+5. When timer expires, current holder loses and every other player wins.
+
+## Stessa Onda
+
+1. Select 3–20 players and start a prompt.
+2. Pass phone privately; every player chooses one of four answers.
+3. App groups matching answers after last choice.
+4. Members of largest group of at least two win. All groups tied for largest win. If all answers are unique, nobody wins.
+
 ## Player statistics
 
-When the result is revealed, every participant receives exactly one recorded game. The result winner receives a role-specific win; every other participant receives a role-specific loss. The profile stores total games played, citizen wins/losses, and impostor wins/losses. Citizen/impostor totals, overall wins/losses, and win percentage are derived. Existing snapshots without statistics are loaded with zeroed counters.
+When a result is revealed, every participant receives exactly one recorded game for that `GameId`. Winners receive one win and other participants one loss; Stessa Onda can produce no winners. Overall games, wins, losses, and rate are derived from per-game values. Impostore also records citizen/impostor role splits. Existing single-game snapshots migrate into Impostore values.

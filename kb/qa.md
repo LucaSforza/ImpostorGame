@@ -1,5 +1,35 @@
 # Validation
 
+## Multi-game release acceptance matrix
+
+Automated gates:
+
+- catalog resolves exactly three stable game IDs and rejects unknown IDs;
+- legacy IndexedDB snapshot migrates without losing players, photos, selections, Impostore settings, active game, or counters;
+- invalid new snapshots are rejected; failed writes preserve previous snapshot;
+- shared player selection is visible to every game setup;
+- each game enforces its documented player bounds and rejects malformed settings/content;
+- Impostore regression suite remains green;
+- Bomba advances holders, increments answers, expires from persisted deadline, resumes after reload, and records all winners/loser once;
+- Stessa Onda keeps choices private until completion, resolves single/tied/no-match winner groups, and records once;
+- aggregate statistics equal sum of per-game records and reject inconsistent edits;
+- Italian and English catalogs cover every message and game-content projection;
+- `npm test` and `npm run build` pass from clean checkout.
+
+Browser QA at 390 × 844 and 320 × 740:
+
+- catalog shows three usable game cards, Pocket Circle brand, privacy promise, no horizontal overflow;
+- each card opens correct setup and shared saved profiles survive reload and game switching;
+- complete one session of every game, then verify separate `#stats` page for all players and all games;
+- refresh during each private/realtime phase: secrets return hidden, Bomba deadline continues, completed results do not double count;
+- navigate back/forward between `#catalog` and `#stats`; active sessions require explicit exit confirmation;
+- switch Italian/English on catalog, setup, live game, result, and statistics screens;
+- verify keyboard focus, button labels, dialogs, reduced motion, empty roster, empty statistics, long names, and local photo avatars;
+- inspect network after load: no gameplay, tracking, advertising, or content requests;
+- test deployed GitHub Pages URL after push and confirm workflow completion.
+
+## Previous Impostore validation
+
 Validated in the Codex in-app browser using smartphone viewport overrides of 390 × 844 and 320 × 740.
 
 - Created five characters; all remained after reload.

@@ -1,10 +1,11 @@
-# Knowledge base
+# Pocket Circle knowledge base
 
-This folder describes Impostor's current behavior. The source of truth remains the code in `src/`.
+This folder describes Pocket Circle, a local-first catalog of pass-and-play games. The source of truth remains the code in `src/`; the catalog design is the implementation contract for the multi-game release.
 
+- [Catalog design](catalog-design.md): brand, catalog, games, shared profiles, statistics, and acceptance boundaries.
 - [Architecture](architecture.md): application structure, state flow, and deployment.
 - [IndexedDB](indexeddb.md): persisted model, logical schema, and local database details.
 - [Game rules](game-rules.md): setup, reveal, discussion, and voting.
 - [Language](language.md): locale catalog, stable category IDs, and extension contract.
 
-The app is a static client: it uses neither an application server nor a remote database. Players, settings, and any active game remain in the user's browser.
+The app is a static client: it uses neither an application server nor a remote database. Shared player profiles, settings, statistics, and any active game remain in the user's browser.

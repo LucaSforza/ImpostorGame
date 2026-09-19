@@ -4,7 +4,7 @@
 
 | Element | Value |
 | --- | --- |
-| Database name | `impostor-game` |
+| Database name | `impostor-game` (legacy technical identifier retained for data compatibility) |
 | Version | `1` |
 | Object store | `snapshot` |
 | Snapshot key | `current` |
@@ -12,16 +12,17 @@
 
 The database is opened only in the browser. During `onupgradeneeded`, `snapshot` is created if it does not exist; each transaction closes the connection when it finishes. Open, blocked, read, and write errors are propagated to the interface. If a write cannot be cloned, the transaction is aborted to preserve the previous snapshot.
 
-## Logical model
+## Target logical model
 
 ```mermaid
 classDiagram
-  class AppData~Game~ {
+  class AppData {
     +Player[] players
     +string[] selectedIds
-    +GameSettings settings
+    +GameId selectedGameId
+    +SettingsByGame settings
     +Locale language
-    +Game activeGame
+    +ActiveGame activeGame
   }
   class Player {
     +string id
@@ -31,20 +32,24 @@ classDiagram
     +PlayerStats stats
   }
   class PlayerStats {
+    +GameStats impostor
+    +GameStats bomb
+    +GameStats sameWave
+    +ImpostorRoleStats impostorRoles
+  }
+  class GameStats {
     +number gamesPlayed
-    +number citizenWins
-    +number citizenLosses
-    +number impostorWins
-    +number impostorLosses
+    +number wins
+    +number losses
   }
-  class GameSettings {
-    +number impostors
-    +number maxAttempts
-    +CategorySelection category
-  }
-  class Game {
+  class ActiveGame {
+    <<union>>
     +string id
+    +GameId gameId
     +Player[] players
+    +boolean scoreRecorded
+  }
+  class ImpostorGame {
     +string[] impostorIds
     +WordEntry entry
     +string phase
@@ -53,9 +58,23 @@ classDiagram
     +string[] eliminatedIds
     +string[] foundImpostorIds
     +string starterId
-    +boolean scoreRecorded
     +number attemptsUsed
     +number maxAttempts
+  }
+  class BombGame {
+    +BombPrompt prompt
+    +string phase
+    +number currentPlayerIndex
+    +number answerCount
+    +number deadline
+    +string loserId
+  }
+  class SameWaveGame {
+    +SameWavePrompt prompt
+    +string phase
+    +number revealIndex
+    +Record selections
+    +string[] winnerIds
   }
   class WordEntry {
     +string word
@@ -64,17 +83,20 @@ classDiagram
     +string hintEn
     +SelectableCategoryId category
   }
-  AppData~Game~ "1" o-- "0..*" Player : players
+  AppData "1" o-- "0..*" Player : reusable profiles
   Player "1" *-- "1" PlayerStats : stats
-  AppData~Game~ "1" *-- "1" GameSettings : settings
-  AppData~Game~ "1" o-- "0..1" Game : activeGame
-  Game "1" o-- "3..20" Player : players
-  Game "1" *-- "1" WordEntry : entry
+  PlayerStats "1" *-- "3" GameStats : per game
+  AppData "1" o-- "0..1" ActiveGame : activeGame
+  ActiveGame <|-- ImpostorGame
+  ActiveGame <|-- BombGame
+  ActiveGame <|-- SameWaveGame
+  ActiveGame "1" o-- "2..20" Player : participants
+  ImpostorGame "1" *-- "1" WordEntry : entry
 ```
 
-`AppData<Game>` is the complete snapshot written under the `current` key. `activeGame` may be `null`; when it contains a game, it allows the game to resume after a reload. `GameSettings.maxAttempts` configures voting sessions and is constrained to `impostors` through `players`. `Game.attemptsUsed` tracks completed sessions and `Game.maxAttempts` snapshots the setting for the active round. `Game.accusedIds` contains the current one-person selection; `Game.eliminatedIds` stores every candidate already voted so later sessions cannot select them again; `Game.foundImpostorIds` stores impostors found across sessions. `PlayerStats` stores games played plus wins/losses by role. Total wins, losses, role totals, and win percentage are derived for display. `Game.scoreRecorded` prevents a result from being counted twice after re-renders, reloads, or edits. `Game` has no locale field: the current `AppData.language` localizes its bilingual `WordEntry` at render time. The temporary flag that indicates whether a card is exposed is not part of this model and is not persisted.
+`AppData` is the complete snapshot written under `current`. `activeGame` may be `null`; its `gameId` selects one union member and allows exact resume after reload. Every session carries `scoreRecorded`, preventing duplicate updates after re-renders or reloads. Bomb uses an absolute deadline so elapsed time survives reload without persisting a timer handle. Player totals are derived from per-game records. Impostore retains its role breakdown. Locale and transient reveal flags remain outside individual game records.
 
-`loadData()` validates the current snapshot shape on read. Existing players without `stats` are accepted and normalized to zero counters; existing settings without `maxAttempts` receive the minimum valid session count for their saved impostor count. New writes always include complete stats and attempt settings. Invalid snapshots, including old category-label values, invalid category arrays, malformed stats, or out-of-range attempt settings, are deleted and treated as absent. No IndexedDB version bump is needed because the stored value is a single application snapshot and compatibility normalization happens at the snapshot boundary.
+`loadData()` validates and migrates snapshots at the boundary. Legacy counters become Impostore statistics; legacy settings become `settings.impostor`; legacy active games gain `gameId: "impostor"`; selected game defaults to Impostore. New writes use only target shape. Malformed or unsupported snapshots are deleted and treated as absent. No IndexedDB version bump is needed because compatibility normalization operates on single stored snapshot value.
 
 ## Data scope
 

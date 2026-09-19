@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import { afterEach, describe, expect, it } from "vitest";
-import { loadData, saveData, type AppData } from "./db";
+import { loadData, migrateSnapshot, saveData, type AppData } from "./db";
 
 const databaseName = "impostor-game";
 
@@ -22,7 +22,7 @@ describe("local game snapshot", () => {
     const data: AppData<{ round: number }> = {
       players: [{ id: "p1", name: "Ada", avatar: "fox", createdAt: 123 }],
       selectedIds: ["p1"],
-      settings: { impostors: 1, category: "Animals" },
+      settings: { impostors: 1, category: "animals" },
       language: "it",
       activeGame: { round: 2 },
     };
@@ -38,11 +38,11 @@ describe("local game snapshot", () => {
     const first: AppData<null> = {
       players: [],
       selectedIds: [],
-      settings: { impostors: 1, category: "First" },
+      settings: { impostors: 1, category: "all" },
       language: "en",
       activeGame: null,
     };
-    const second = { ...first, settings: { impostors: 2, category: "Second" } };
+    const second: AppData<null> = { ...first, settings: { impostors: 2, category: "food" } };
 
     await saveData(first);
     await saveData(second);
@@ -54,7 +54,7 @@ describe("local game snapshot", () => {
     const existing: AppData<null> = {
       players: [],
       selectedIds: [],
-      settings: { impostors: 1, category: "Animals" },
+      settings: { impostors: 1, category: "animals" },
       language: "en",
       activeGame: null,
     };
@@ -80,5 +80,21 @@ describe("local game snapshot", () => {
         Object.defineProperty(globalThis, "indexedDB", original);
       }
     }
+  });
+
+  it("migrates legacy language and category fields", () => {
+    const legacy = {
+      players: [],
+      selectedIds: [],
+      settings: { impostors: 1, category: "Oggetti" },
+      language: "en",
+      activeGame: { entry: { category: "Cibo" }, language: "it" },
+    } as unknown as AppData<{ entry: { category: string }; language: string }>;
+
+    const migrated = migrateSnapshot(legacy);
+
+    expect(migrated.settings.category).toBe("objects");
+    expect(migrated.activeGame?.entry.category).toBe("food");
+    expect(migrated.activeGame).not.toHaveProperty("language");
   });
 });

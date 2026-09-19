@@ -58,6 +58,7 @@ See the [knowledge base](kb/README.md) for:
 - [Architecture](kb/architecture.md)
 - [IndexedDB model](kb/indexeddb.md)
 - [Game rules](kb/game-rules.md)
+- [Language and localization](kb/language.md)
 
 ## License
 

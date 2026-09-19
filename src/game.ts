@@ -1,16 +1,22 @@
 import type { Player, GameSettings } from './db';
-import { words, type WordEntry } from './words';
+import { categoryLabel, type Locale } from './i18n';
+import { isCategoryId, normalizeCategory, words, type CategoryId, type WordEntry } from './words';
 
 export interface Game {
   id: string;
   players: Player[];
   impostorIds: string[];
   entry: WordEntry;
-  language: 'it' | 'en';
   phase: 'reveal' | 'discuss' | 'vote' | 'result';
   revealIndex: number;
   accusedIds: string[];
   starterId: string;
+}
+
+export interface LocalizedEntry {
+  word: string;
+  hint: string;
+  category: string;
 }
 
 export function maxImpostors(count: number): number {
@@ -25,17 +31,27 @@ function randomIndex(length: number): number {
   return value % length;
 }
 
-export function createGame(players: Player[], settings: GameSettings, language: 'it' | 'en', previousWord?: string): Game {
+export function createGame(players: Player[], settings: GameSettings, previousWord?: string): Game {
   if (players.length < 3 || players.length > 20 || new Set(players.map(p => p.id)).size !== players.length) throw new Error('Invalid player count');
   if (!Number.isInteger(settings.impostors) || settings.impostors < 1 || settings.impostors > maxImpostors(players.length)) throw new Error('Invalid impostor count');
-  const candidates = words.filter(w => (settings.category === 'all' || w.category === settings.category) && w.word !== previousWord);
+  if (!isCategoryId(settings.category)) throw new Error('Invalid category');
+  const category: CategoryId = normalizeCategory(settings.category);
+  const candidates = words.filter(w => (category === 'all' || w.category === category) && w.word !== previousWord);
   if (!candidates.length) throw new Error('Invalid category');
   const shuffled = [...players];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = randomIndex(i + 1);
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
-  return { id: crypto.randomUUID(), players: structuredClone(players), impostorIds: shuffled.slice(0, settings.impostors).map(p => p.id), entry: candidates[randomIndex(candidates.length)], language, phase: 'reveal', revealIndex: 0, accusedIds: [], starterId: players[randomIndex(players.length)].id };
+  return { id: crypto.randomUUID(), players: structuredClone(players), impostorIds: shuffled.slice(0, settings.impostors).map(p => p.id), entry: candidates[randomIndex(candidates.length)], phase: 'reveal', revealIndex: 0, accusedIds: [], starterId: players[randomIndex(players.length)].id };
+}
+
+export function localizeEntry(entry: WordEntry, locale: Locale): LocalizedEntry {
+  return {
+    word: locale === 'it' ? entry.word : entry.wordEn,
+    hint: locale === 'it' ? entry.hint : entry.hintEn,
+    category: categoryLabel(locale, normalizeCategory(entry.category)),
+  };
 }
 
 export function citizensWin(game: Game): boolean {

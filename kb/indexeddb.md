@@ -20,7 +20,7 @@ classDiagram
     +Player[] players
     +string[] selectedIds
     +GameSettings settings
-    +string language
+    +Locale language
     +Game activeGame
   }
   class Player {
@@ -31,14 +31,13 @@ classDiagram
   }
   class GameSettings {
     +number impostors
-    +string category
+    +CategoryId category
   }
   class Game {
     +string id
     +Player[] players
     +string[] impostorIds
     +WordEntry entry
-    +string language
     +string phase
     +number revealIndex
     +string[] accusedIds
@@ -49,7 +48,7 @@ classDiagram
     +string hint
     +string wordEn
     +string hintEn
-    +string category
+    +CategoryId category
   }
   AppData~Game~ "1" o-- "0..*" Player : players
   AppData~Game~ "1" *-- "1" GameSettings : settings
@@ -58,7 +57,9 @@ classDiagram
   Game "1" *-- "1" WordEntry : entry
 ```
 
-`AppData<Game>` is the complete snapshot written under the `current` key. `activeGame` may be `null`; when it contains a game, it allows the game to resume after a reload. The temporary flag that indicates whether a card is exposed is not part of this model and is not persisted.
+`AppData<Game>` is the complete snapshot written under the `current` key. `activeGame` may be `null`; when it contains a game, it allows the game to resume after a reload. `Game` has no locale field: the current `AppData.language` localizes its bilingual `WordEntry` at render time. The temporary flag that indicates whether a card is exposed is not part of this model and is not persisted.
+
+`loadData()` normalizes legacy snapshots on read: Italian category labels (`Cibo`, `Luoghi`, `Oggetti`, `Animali`, `Sport`, `Cinema`) become stable IDs (`food`, `places`, `objects`, `animals`, `sport`, `cinema`), and legacy `activeGame.language` is discarded. No IndexedDB version bump is needed because the stored value is a single application snapshot and migration happens before it reaches UI state.
 
 ## Data scope
 

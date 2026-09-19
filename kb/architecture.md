@@ -5,14 +5,15 @@ Impostor is a single-page app written in TypeScript and bundled by Vite. The bui
 ## Modules
 
 - `src/main.ts` owns UI state, HTML rendering, events, and the game flow. `init()` loads the local snapshot; every mutation goes through `change()`, which clones the state, saves it, and then re-renders. Setup and gameplay render through the same gameplay theme. Preset player avatars use the 16 individual `src/assets/avatars/avatar-*.webp` tiles; legacy emoji values resolve to image tiles without changing stored game rules. Character setup also accepts a local upload/camera photo, stored as a resized data URL with its original aspect ratio. Character setup supports random/manual avatar choice, editing existing characters, and confirmed deletion with selection cleanup.
-- `src/game.ts` owns the `Game` model, random word selection, role assignment, and the crew win condition.
-- `src/db.ts` defines `AppData<T>` and wraps snapshot reads and writes in IndexedDB.
-- `src/words.ts` contains the categories and the bilingual `WordEntry` corpus.
+- `src/game.ts` owns the `Game` model, random word selection, role assignment, localized word/hint/category projection, and the crew win condition.
+- `src/db.ts` defines `AppData<T>`, wraps snapshot reads and writes in IndexedDB, and migrates legacy category labels plus the removed per-game language field.
+- `src/i18n.ts` owns the typed locale catalog, interpolation, and localized category labels. UI code passes message keys to `translate()`; it does not carry Italian/English pairs.
+- `src/words.ts` contains stable category IDs and the bilingual `WordEntry` corpus.
 - `src/style.css` contains the interface presentation, including the red/orange gameplay card treatment and character artwork.
 
 ## State and language
 
-`AppData<Game>` stores players, selections, settings, the interface language, and the active game. The user's language choice (`data.language`) updates interface copy, labels, and category names. When a game is created, `createGame()` copies that language into `Game.language`; the game's word and hint therefore stay in the language selected at startup even if the interface is switched during the game. The next game follows the interface's current language.
+`AppData<Game>` stores players, selections, settings, the interface language, and the active game. `data.language` is the single locale source for interface copy, category labels, words, and hints. `Game` stores language-neutral game state and bilingual word data; `localizeEntry()` projects that data using the current locale. Switching language during a game therefore re-renders the entire game consistently and does not create mixed-language cards.
 
 The reveal card is controlled by the module variable `revealed`, which is not part of `AppData` and is never saved. `visibilitychange`, `pagehide`, and `blur` reset it to `false`, so rendering hides the card when the app loses visibility. During the unrevealed state, the card shows character artwork and can be opened with the accessible Reveal button or by swiping upward more than 55 pixels. The local snapshot still contains the active game, including the word entry and role IDs needed to resume after a reload.
 

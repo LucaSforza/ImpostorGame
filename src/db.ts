@@ -1,3 +1,6 @@
+import { normalizeLocale, type Locale } from './i18n';
+import { normalizeCategory, type CategoryId } from './words';
+
 export interface Player {
   id: string;
   name: string;
@@ -7,14 +10,14 @@ export interface Player {
 
 export interface GameSettings {
   impostors: number;
-  category: string;
+  category: CategoryId;
 }
 
 export interface AppData<T> {
   players: Player[];
   selectedIds: string[];
   settings: GameSettings;
-  language: "it" | "en";
+  language: Locale;
   activeGame: T | null;
 }
 
@@ -75,6 +78,22 @@ function transactionError(transaction: IDBTransaction, fallback: string): Error 
   return transaction.error ?? new Error(fallback);
 }
 
+export function migrateSnapshot<T>(data: AppData<T>): AppData<T> {
+  const next = structuredClone(data);
+  next.language = normalizeLocale(next.language);
+  next.settings.category = normalizeCategory(next.settings.category);
+
+  const activeGame = next.activeGame as (T & {
+    entry?: { category?: unknown };
+    language?: unknown;
+  }) | null;
+  if (activeGame) {
+    if (activeGame.entry) activeGame.entry.category = normalizeCategory(activeGame.entry.category);
+    delete activeGame.language;
+  }
+  return next;
+}
+
 export function loadData<T>(): Promise<AppData<T> | null> {
   return openDatabase().then(
     (database) =>
@@ -93,7 +112,8 @@ export function loadData<T>(): Promise<AppData<T> | null> {
         const store = transaction.objectStore(STORE_NAME);
         const request = store.get(SNAPSHOT_KEY);
         request.onsuccess = () => {
-          snapshot = (request.result as AppData<T> | undefined) ?? null;
+          const stored = (request.result as AppData<T> | undefined) ?? null;
+          snapshot = stored ? migrateSnapshot(stored) : null;
         };
         request.onerror = () => reject(request.error ?? new Error("IndexedDB read failed"));
         transaction.oncomplete = () => {

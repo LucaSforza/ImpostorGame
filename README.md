@@ -1,15 +1,34 @@
 # Impostor
 
-Party game mobile in italiano e inglese. Un telefono passa tra 3–20 amici: la crew conosce una parola, gli impostori ricevono solo un indizio.
+Trust no one.
 
-- TypeScript + Vite, sito statico senza backend, account o analytics.
-- Personaggi, impostazioni, lingua e partita salvati in IndexedDB sul dispositivo.
-- 120 parole bilingue in 6 categorie. Ruoli casuali, carte private, voto collettivo e rivincita.
-- Design mobile, animazioni con rispetto di `prefers-reduced-motion`.
+Impostor is a local-first party game for 3–20 players sharing one phone. Crew members receive a secret word; impostors receive only a related hint. Talk, bluff, and find the impostors before they blend in.
 
-## Sviluppo
+Play the live version at [lucasforza.github.io/ImpostorGame](https://lucasforza.github.io/ImpostorGame/).
 
-Node.js 22+.
+## Features
+
+- Italian and English interface and word deck.
+- 120 bilingual words across six categories.
+- 3–20 players with configurable impostor count.
+- Saved player profiles with illustrated avatars or device photos.
+- Private role reveal, discussion, collective vote, results, and rematches.
+- IndexedDB persistence for players, settings, and an active game.
+- Mobile-first layout with `prefers-reduced-motion` support.
+- No backend, accounts, analytics, or game-time API calls.
+
+## How to play
+
+1. Add 3–20 players and select the players for the round.
+2. Choose the number of impostors and a word category.
+3. Pass the phone around. Crew members see the secret word; impostors see its hint.
+4. Take turns saying a word related to the secret without saying the secret itself.
+5. Vote together for exactly as many suspects as there are impostors.
+6. The crew wins only if every impostor is accused and no innocent player is selected.
+
+## Development
+
+Requires Node.js 22 or newer.
 
 ```sh
 npm ci
@@ -18,18 +37,28 @@ npm test
 npm run build
 ```
 
-## Pubblicazione
+`npm run dev` starts the Vite development server. `npm test` runs the Vitest suite. `npm run build` type-checks and creates the production build in `dist/`.
 
-GitHub Pages: https://lucasforza.github.io/ImpostorGame/
+## Deployment
 
-Il workflow `.github/workflows/deploy.yml` verifica i test e pubblica `dist/` ad ogni push su `main`. La sorgente Pages del repository deve essere **GitHub Actions**. Il base path Vite è `/ImpostorGame/`.
+The GitHub Actions workflow in `.github/workflows/deploy.yml` runs tests and builds `dist/` on every push to `main`, then deploys it to GitHub Pages.
 
-## Knowledge base
+The repository's Pages source must be set to **GitHub Actions**. Vite uses `/ImpostorGame/` as its base path.
 
-Vedi [kb/README.md](kb/README.md), incluso UML Mermaid dei dati IndexedDB.
+## Data and privacy
 
-Il sito richiede rete per caricare i file iniziali. Una volta aperto, il gioco funziona senza chiamate di rete. I dati sono specifici del browser e dell'origine: non si trasferiscono tra localhost e GitHub Pages. Cancellare i dati del sito cancella personaggi e partita. Utilizzare una sola scheda di gioco per dispositivo.
+The app is a static client. Players, settings, photos, and any active game stay in IndexedDB on the current browser and origin. Once the app has loaded, the game runs without network calls.
 
-## Licenza
+Data is not shared between `localhost` and GitHub Pages. Clearing site data removes saved players and games. Use one game tab per device.
 
-Distribuito con licenza [GNU Affero General Public License v3.0 o successiva](LICENSE).
+## Project documentation
+
+See the [knowledge base](kb/README.md) for:
+
+- [Architecture](kb/architecture.md)
+- [IndexedDB model](kb/indexeddb.md)
+- [Game rules](kb/game-rules.md)
+
+## License
+
+Released under the [GNU Affero General Public License v3.0 or later](LICENSE).

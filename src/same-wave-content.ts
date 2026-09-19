@@ -1,0 +1,73 @@
+export type SameWavePrompt = {
+  readonly id: string;
+  readonly prompt: string;
+  readonly promptEn: string;
+  readonly options: readonly [string, string, string, string];
+  readonly optionsEn: readonly [string, string, string, string];
+};
+
+/** A small fixed answer set keeps private pass-and-play rounds quick to read. */
+export const SAME_WAVE_PROMPTS: readonly SameWavePrompt[] = [
+  { id: "wave-01", prompt: "La colazione perfetta?", promptEn: "The perfect breakfast?", options: ["Dolce", "Salata", "Al bar", "A letto"], optionsEn: ["Sweet", "Savory", "At a café", "In bed"] },
+  { id: "wave-02", prompt: "Il superpotere più utile?", promptEn: "The most useful superpower?", options: ["Volare", "Teletrasportarsi", "Leggere la mente", "Fermare il tempo"], optionsEn: ["Flying", "Teleporting", "Mind reading", "Stopping time"] },
+  { id: "wave-03", prompt: "Il miglior animale domestico?", promptEn: "The best pet?", options: ["Cane", "Gatto", "Coniglio", "Pesce rosso"], optionsEn: ["Dog", "Cat", "Rabbit", "Goldfish"] },
+  { id: "wave-04", prompt: "Per una serata ideale scegli...", promptEn: "For an ideal evening, choose...", options: ["Film", "Cena", "Giochi", "Passeggiata"], optionsEn: ["A movie", "Dinner", "Games", "A walk"] },
+  { id: "wave-05", prompt: "La pizza migliore ha...", promptEn: "The best pizza has...", options: ["Margherita", "Verdure", "Piccante", "Tutto"], optionsEn: ["Margherita", "Vegetables", "Spicy toppings", "Everything"] },
+  { id: "wave-06", prompt: "Scegli una vacanza.", promptEn: "Choose a holiday.", options: ["Mare", "Montagna", "Città", "Campagna"], optionsEn: ["Beach", "Mountains", "City", "Countryside"] },
+  { id: "wave-07", prompt: "Il tuo meteo preferito?", promptEn: "Your favorite weather?", options: ["Sole", "Pioggia", "Neve", "Vento"], optionsEn: ["Sun", "Rain", "Snow", "Wind"] },
+  { id: "wave-08", prompt: "Il primo snack che prenderesti?", promptEn: "The first snack you would grab?", options: ["Patatine", "Frutta", "Biscotti", "Popcorn"], optionsEn: ["Chips", "Fruit", "Cookies", "Popcorn"] },
+  { id: "wave-09", prompt: "Un talento da imparare subito?", promptEn: "A talent to learn right away?", options: ["Cantare", "Cucinare", "Ballare", "Disegnare"], optionsEn: ["Singing", "Cooking", "Dancing", "Drawing"] },
+  { id: "wave-10", prompt: "Il posto migliore per leggere?", promptEn: "The best place to read?", options: ["Divano", "Parco", "Spiaggia", "Biblioteca"], optionsEn: ["Sofa", "Park", "Beach", "Library"] },
+  { id: "wave-11", prompt: "Scegli un compagno di viaggio.", promptEn: "Choose a travel companion.", options: ["Amico", "Fratello o sorella", "Animale", "Nessuno"], optionsEn: ["Friend", "Sibling", "Pet", "Nobody"] },
+  { id: "wave-12", prompt: "La pausa ideale dura...", promptEn: "The ideal break lasts...", options: ["Cinque minuti", "Un quarto d'ora", "Un'ora", "Finché serve"], optionsEn: ["Five minutes", "Fifteen minutes", "An hour", "As long as needed"] },
+  { id: "wave-13", prompt: "La musica da viaggio?", promptEn: "The road-trip music?", options: ["Pop", "Rock", "Classica", "Podcast"], optionsEn: ["Pop", "Rock", "Classical", "Podcast"] },
+  { id: "wave-14", prompt: "Il tuo gelato preferito?", promptEn: "Your favorite gelato flavor?", options: ["Cioccolato", "Vaniglia", "Pistacchio", "Frutta"], optionsEn: ["Chocolate", "Vanilla", "Pistachio", "Fruit"] },
+  { id: "wave-15", prompt: "Scegli un colore da indossare.", promptEn: "Choose a color to wear.", options: ["Blu", "Rosso", "Verde", "Nero"], optionsEn: ["Blue", "Red", "Green", "Black"] },
+  { id: "wave-16", prompt: "Un oggetto sempre nello zaino?", promptEn: "An item always in your backpack?", options: ["Borraccia", "Libro", "Caricabatterie", "Merenda"], optionsEn: ["Water bottle", "Book", "Charger", "Snack"] },
+  { id: "wave-17", prompt: "Il gioco da tavolo più divertente?", promptEn: "The most fun board game?", options: ["Scacchi", "Monopoly", "Dixit", "Carte"], optionsEn: ["Chess", "Monopoly", "Dixit", "Cards"] },
+  { id: "wave-18", prompt: "Per rilassarti scegli...", promptEn: "To relax, choose...", options: ["Musica", "Silenzio", "Una passeggiata", "Un pisolino"], optionsEn: ["Music", "Silence", "A walk", "A nap"] },
+  { id: "wave-19", prompt: "Il miglior momento della giornata?", promptEn: "The best time of day?", options: ["Mattina", "Pranzo", "Tramonto", "Sera"], optionsEn: ["Morning", "Lunch", "Sunset", "Evening"] },
+  { id: "wave-20", prompt: "Il tuo posto preferito in casa?", promptEn: "Your favorite place at home?", options: ["Cucina", "Divano", "Balcone", "Camera"], optionsEn: ["Kitchen", "Sofa", "Balcony", "Bedroom"] },
+  { id: "wave-21", prompt: "Una cosa da fare sotto la pioggia?", promptEn: "Something to do in the rain?", options: ["Film", "Tè caldo", "Salto nelle pozzanghere", "Libro"], optionsEn: ["Movie", "Hot tea", "Puddle jumping", "Book"] },
+  { id: "wave-22", prompt: "Il viaggio più bello comincia con...", promptEn: "The best trip starts with...", options: ["Una mappa", "Una playlist", "Uno zaino", "Un buon compagno"], optionsEn: ["A map", "A playlist", "A backpack", "Good company"] },
+  { id: "wave-23", prompt: "Scegli una serata a tema.", promptEn: "Choose a themed evening.", options: ["Cinema", "Anni 80", "Pigiama", "Mistero"], optionsEn: ["Cinema", "Eighties", "Pajamas", "Mystery"] },
+  { id: "wave-24", prompt: "Il profumo che ti mette di buonumore?", promptEn: "A scent that lifts your mood?", options: ["Caffè", "Pane caldo", "Fiori", "Pioggia"], optionsEn: ["Coffee", "Fresh bread", "Flowers", "Rain"] },
+  { id: "wave-25", prompt: "Un'abilità utile a una festa?", promptEn: "A useful party skill?", options: ["Raccontare storie", "Scegliere musica", "Fare foto", "Preparare snack"], optionsEn: ["Telling stories", "Choosing music", "Taking photos", "Making snacks"] },
+  { id: "wave-26", prompt: "Il tuo mezzo preferito?", promptEn: "Your favorite way to get around?", options: ["A piedi", "Bici", "Treno", "Auto"], optionsEn: ["Walking", "Bike", "Train", "Car"] },
+  { id: "wave-27", prompt: "Scegli un animale da osservare.", promptEn: "Choose an animal to watch.", options: ["Delfino", "Giraffa", "Pinguino", "Aquila"], optionsEn: ["Dolphin", "Giraffe", "Penguin", "Eagle"] },
+  { id: "wave-28", prompt: "La tua merenda da picnic?", promptEn: "Your picnic snack?", options: ["Panino", "Frutta", "Biscotti", "Focaccia"], optionsEn: ["Sandwich", "Fruit", "Cookies", "Focaccia"] },
+  { id: "wave-29", prompt: "Un buon vicino porta...", promptEn: "A good neighbor brings...", options: ["Sorrisi", "Dolci", "Buone notizie", "Piante"], optionsEn: ["Smiles", "Sweets", "Good news", "Plants"] },
+  { id: "wave-30", prompt: "La tua stanza ideale ha...", promptEn: "Your ideal room has...", options: ["Luce", "Piante", "Libri", "Musica"], optionsEn: ["Light", "Plants", "Books", "Music"] },
+  { id: "wave-31", prompt: "Scegli una destinazione da sogno.", promptEn: "Choose a dream destination.", options: ["Isola", "Castello", "Foresta", "Grande città"], optionsEn: ["Island", "Castle", "Forest", "Big city"] },
+  { id: "wave-32", prompt: "Il tuo sport da provare?", promptEn: "A sport to try?", options: ["Surf", "Arrampicata", "Tennis", "Yoga"], optionsEn: ["Surfing", "Climbing", "Tennis", "Yoga"] },
+  { id: "wave-33", prompt: "Un regalo che fa sempre piacere?", promptEn: "A gift that is always welcome?", options: ["Libro", "Fiori", "Esperienza", "Cioccolato"], optionsEn: ["Book", "Flowers", "Experience", "Chocolate"] },
+  { id: "wave-34", prompt: "La tua colonna sonora per cucinare?", promptEn: "Your cooking soundtrack?", options: ["Playlist energica", "Radio", "Silenzio", "Canzoni nostalgiche"], optionsEn: ["Upbeat playlist", "Radio", "Silence", "Nostalgic songs"] },
+  { id: "wave-35", prompt: "Cosa scegli al mercato?", promptEn: "What do you choose at the market?", options: ["Frutta", "Formaggi", "Fiori", "Pane"], optionsEn: ["Fruit", "Cheese", "Flowers", "Bread"] },
+  { id: "wave-36", prompt: "Il tuo modo di festeggiare?", promptEn: "Your way to celebrate?", options: ["Cena", "Ballo", "Brindisi", "Foto di gruppo"], optionsEn: ["Dinner", "Dancing", "Toast", "Group photo"] },
+  { id: "wave-37", prompt: "Il miglior posto per guardare le stelle?", promptEn: "The best place to stargaze?", options: ["Terrazza", "Prato", "Spiaggia", "Montagna"], optionsEn: ["Terrace", "Meadow", "Beach", "Mountain"] },
+  { id: "wave-38", prompt: "Scegli una parola che ti rappresenta oggi.", promptEn: "Choose a word that represents you today.", options: ["Curioso", "Tranquillo", "Carico", "Sognatore"], optionsEn: ["Curious", "Calm", "Energized", "Dreamer"] },
+  { id: "wave-39", prompt: "Il tuo alleato per una giornata lunga?", promptEn: "Your ally on a long day?", options: ["Caffè", "Musica", "Amici", "Pause"], optionsEn: ["Coffee", "Music", "Friends", "Breaks"] },
+  { id: "wave-40", prompt: "Scegli una cosa da imparare insieme.", promptEn: "Choose something to learn together.", options: ["Una ricetta", "Un ballo", "Una lingua", "Un gioco"], optionsEn: ["A recipe", "A dance", "A language", "A game"] },
+  { id: "wave-41", prompt: "La tua colazione in vacanza?", promptEn: "Your holiday breakfast?", options: ["Buffet", "Bar locale", "Frutta fresca", "Colazione lenta"], optionsEn: ["Buffet", "Local café", "Fresh fruit", "Slow breakfast"] },
+  { id: "wave-42", prompt: "Un souvenir perfetto?", promptEn: "A perfect souvenir?", options: ["Cartolina", "Artigianato", "Foto", "Specialità locale"], optionsEn: ["Postcard", "Craft", "Photo", "Local specialty"] },
+  { id: "wave-43", prompt: "Il tuo posto preferito per chiacchierare?", promptEn: "Your favorite place to chat?", options: ["Cucina", "Panchina", "Caffè", "Passeggiata"], optionsEn: ["Kitchen", "Bench", "Café", "Walk"] },
+  { id: "wave-44", prompt: "Una decorazione per casa?", promptEn: "A decoration for your home?", options: ["Poster", "Pianta", "Foto", "Candela"], optionsEn: ["Poster", "Plant", "Photo", "Candle"] },
+  { id: "wave-45", prompt: "Il tuo modo di scegliere un film?", promptEn: "How do you choose a movie?", options: ["Trailer", "Consiglio", "Genere", "Titolo curioso"], optionsEn: ["Trailer", "Recommendation", "Genre", "Curious title"] },
+  { id: "wave-46", prompt: "Cosa porta fortuna?", promptEn: "What brings good luck?", options: ["Un portafortuna", "Un sorriso", "Una buona idea", "Un incontro"], optionsEn: ["A lucky charm", "A smile", "A good idea", "A meeting"] },
+  { id: "wave-47", prompt: "Scegli un suono piacevole.", promptEn: "Choose a pleasant sound.", options: ["Risate", "Onde", "Campanelli", "Foglie"], optionsEn: ["Laughter", "Waves", "Bells", "Leaves"] },
+  { id: "wave-48", prompt: "La tua attività per una domenica lenta?", promptEn: "Your slow Sunday activity?", options: ["Dormire", "Cucinare", "Leggere", "Passeggiare"], optionsEn: ["Sleeping", "Cooking", "Reading", "Walking"] },
+  { id: "wave-49", prompt: "Una sorpresa piacevole?", promptEn: "A pleasant surprise?", options: ["Messaggio", "Fiori", "Invito", "Dolce"], optionsEn: ["Message", "Flowers", "Invitation", "Treat"] },
+  { id: "wave-50", prompt: "La tua energia in gruppo?", promptEn: "Your energy in a group?", options: ["Ascolto", "Battute", "Idee", "Organizzazione"], optionsEn: ["Listening", "Jokes", "Ideas", "Organization"] },
+  { id: "wave-51", prompt: "Scegli una vista da finestra.", promptEn: "Choose a view from a window.", options: ["Mare", "Città", "Montagne", "Giardino"], optionsEn: ["Sea", "City", "Mountains", "Garden"] },
+  { id: "wave-52", prompt: "Un ingrediente che migliora tutto?", promptEn: "An ingredient that improves everything?", options: ["Basilico", "Limone", "Formaggio", "Cioccolato"], optionsEn: ["Basil", "Lemon", "Cheese", "Chocolate"] },
+  { id: "wave-53", prompt: "Il modo migliore per conoscere un posto?", promptEn: "The best way to discover a place?", options: ["Camminare", "Mangiare locale", "Parlare con persone", "Visitare un museo"], optionsEn: ["Walking", "Eating local food", "Talking to people", "Visiting a museum"] },
+  { id: "wave-54", prompt: "Un messaggio da ricevere oggi?", promptEn: "A message to receive today?", options: ["Come stai?", "Ci vediamo?", "Ho una sorpresa", "Bravissimo!"], optionsEn: ["How are you?", "Shall we meet?", "I have a surprise", "Well done!"] },
+  { id: "wave-55", prompt: "Scegli una luce per la sera.", promptEn: "Choose an evening light.", options: ["Candele", "Lampadine calde", "Luci colorate", "Luna"], optionsEn: ["Candles", "Warm bulbs", "Colored lights", "Moonlight"] },
+  { id: "wave-56", prompt: "Il tuo modo di festeggiare un piccolo successo?", promptEn: "How do you celebrate a small success?", options: ["Dolce", "Telefonata", "Passeggiata", "Playlist"], optionsEn: ["Treat", "Phone call", "Walk", "Playlist"] },
+  { id: "wave-57", prompt: "Cosa rende speciale un picnic?", promptEn: "What makes a picnic special?", options: ["Compagnia", "Posto", "Cibo", "Giochi"], optionsEn: ["Company", "Location", "Food", "Games"] },
+  { id: "wave-58", prompt: "Il tuo modo di affrontare un lunedì?", promptEn: "How do you face a Monday?", options: ["Piano", "Con musica", "Con caffè", "Con entusiasmo"], optionsEn: ["Slowly", "With music", "With coffee", "With enthusiasm"] },
+  { id: "wave-59", prompt: "Scegli un tema per una foto di gruppo.", promptEn: "Choose a group-photo theme.", options: ["Seria", "Spontanea", "Buffa", "Elegante"], optionsEn: ["Serious", "Candid", "Funny", "Elegant"] },
+  { id: "wave-60", prompt: "La tua definizione di giornata riuscita?", promptEn: "Your definition of a good day?", options: ["Ho riso", "Ho imparato", "Ho riposato", "Ho condiviso"], optionsEn: ["I laughed", "I learned", "I rested", "I shared"] },
+] as const;
+
+export const sameWavePrompts = SAME_WAVE_PROMPTS;

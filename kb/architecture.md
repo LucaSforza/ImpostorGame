@@ -8,14 +8,17 @@ The multi-game target keeps one shell and one persisted snapshot. `GameCatalog` 
 
 - `src/main.ts` owns the application shell, screen routing, rendering, and events. `init()` loads the local snapshot; every mutation goes through `change()`, which clones state, saves it, and then re-renders. It delegates game rules to pure game modules.
 - `src/catalog.ts` owns `GameCatalog`, `GameId`, and immutable localized catalog metadata.
+- `src/router.ts` parses the supported `#catalog`, `#setup`, and `#stats` routes with a catalog fallback.
 - `src/game.ts` owns the `Game` model, random word selection, role assignment, localized word/hint/category projection, voting-session bounds, one-candidate vote resolution, candidate elimination, progressive impostor discovery, the crew win condition, and pure player-stat updates for completed games.
-- `src/bomb.ts` owns Bomb prompts, deadline creation, pass progression, expiry, and result projection.
+- `src/bomb.ts` owns Bomb prompts, deadline creation, expiry, group adjudication, and result projection.
 - `src/same-wave.ts` owns Stessa Onda prompts, private selections, grouping, and winner resolution.
 - `src/stats.ts` owns zeroed statistics, legacy conversion, aggregate derivation, invariant checks, and exactly-once result updates.
 - `src/db.ts` defines `AppData`, wraps snapshot reads and writes in IndexedDB, migrates valid legacy snapshots at the boundary, and deletes snapshots that fail supported contracts.
 - `src/i18n.ts` owns the typed locale catalog, interpolation, and localized category labels. UI code passes message keys to `translate()`; it does not carry Italian/English pairs.
 - `src/words.ts` contains stable category IDs and the bilingual `WordEntry` corpus.
-- `src/style.css` contains the interface presentation, including the red/orange gameplay card treatment and character artwork.
+- `src/style.css` contains the single Night Arcade design system used by catalog, setup, all games, dialogs, results, and statistics. Shared CSS custom properties are the only source of color, type, spacing, border, and focus values; game identity is limited to small accents described in [catalog design](catalog-design.md#visual-system-night-arcade).
+
+Header help is resolved from current route plus selected or active game. Catalog, statistics, Impostore, Bomba, and Stessa Onda each provide localized guidance without changing persisted state.
 
 ## State and language
 

@@ -10,7 +10,7 @@ Automated gates:
 - shared player selection is visible to every game setup;
 - each game enforces its documented player bounds and rejects malformed settings/content;
 - Impostore regression suite remains green;
-- Bomba advances holders, increments answers, expires from persisted deadline, resumes after reload, and records all winners/loser once;
+- Bomba exposes no pass/holder controls, expires from persisted deadline, resumes into timer or adjudication, rejects invalid loser IDs, and records selected loser plus all winners once;
 - Stessa Onda keeps choices private until completion, resolves single/tied/no-match winner groups, and records once;
 - aggregate statistics equal sum of per-game records and reject inconsistent edits;
 - Italian and English catalogs cover every message and game-content projection;
@@ -19,6 +19,10 @@ Automated gates:
 Browser QA at 390 × 844 and 320 × 740:
 
 - catalog shows three usable game cards, Pocket Circle brand, privacy promise, no horizontal overflow;
+- every route follows the normative Night Arcade tokens: deep-plum shell, warm-white readable copy, lime primary action/focus, common cards and controls; game identity never replaces the full-page palette;
+- mobile copy remains at least 14 px for body text and 12 px for metadata, tap targets remain at least 44 × 44 px, and no essential copy is low-contrast or laid over busy artwork;
+- header remains usable without clipping at 320 px: readable brand, icon navigation with accessible names, and no horizontal page scrollbar;
+- contextual help shows app guidance on catalog, statistics guidance on `#stats`, and matching rules for each selected or active game; verify every variant in Italian and English without state mutation;
 - each card opens correct setup and shared saved profiles survive reload and game switching;
 - complete one session of every game, then verify separate `#stats` page for all players and all games;
 - refresh during each private/realtime phase: secrets return hidden, Bomba deadline continues, completed results do not double count;
@@ -52,3 +56,14 @@ Validated in the Codex in-app browser using smartphone viewport overrides of 390
 Automated checks: `npm test` (26 tests) and `npm run build`. Tests cover IndexedDB snapshot replacement, structured cloning, failure preservation, invalid-snapshot deletion, legacy player-stat and attempt-setting normalization, out-of-range attempt rejection; player/impostor/session limits, one-candidate vote resolution, candidate elimination, progressive impostor discovery, role uniqueness, single- and multi-category validation, consecutive-word exclusion, snapshot isolation, locale catalog/projections, win conditions, and role-specific result recording.
 
 Browser-local data belongs to its origin. The development preview and public GitHub Pages site intentionally have separate databases. Runtime data is never committed to Git or uploaded during deployment.
+
+## Pocket Circle release validation — 2026-09-19
+
+- Automated gates passed: `npm test` reports 8 files and 48 tests; every test is under `tests/`. `npm run build` and `git diff --check` pass.
+- Completed Impostore, Bomba, and Stessa Onda sessions with three shared profiles. Verified per-game and overall results on separate statistics screen and no duplicate score after reload.
+- Bomba QA confirms common timer only, no pass/holder control, expiry into manual group adjudication, loser selection, result persistence, and delayed statistic recording.
+- Contextual help verified in English for catalog, statistics, Impostore, Bomba, and Stessa Onda, plus Italian Impostore variant. Dialog open/close preserved route and game state.
+- Direct reload on `#setup` restores selected setup. `#catalog` and `#stats` navigation resets scroll to top.
+- Night Arcade visual system verified on catalog, setup, live Bomba, results, dialogs, and statistics. At 390 × 844 and 320 × 740, document width equals viewport content width; catalog body copy computes to 14 px and metadata to 12 px. Desktop 1280 × 800 uses three catalog columns.
+- Fresh browser load produced no console errors or warnings. Source scan found no runtime `fetch`, `XMLHttpRequest`, `WebSocket`, or `EventSource` calls.
+- Final IndexedDB tests cover malformed nested statistics, invalid game categories, malformed discriminated active sessions, valid Bomb resume, legacy attempt clamping, deletion of corrupt snapshots, and preserved writes.

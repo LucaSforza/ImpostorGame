@@ -1,8 +1,15 @@
 import './style.css';
-import { emptyPlayerStats, loadData, saveData, type AppData, type Player, type PlayerStats } from './db';
-import { createGame, localizeEntry, maxAttempts, minAttempts, maxImpostors, citizensWin, recordGameResult, resolveVote, type Game } from './game';
+import { emptyPlayerStats, loadData, saveData, type AppData, type ImpostorStats, type Player, type PlayerStats } from './db';
+import { createGame, localizeEntry, maxAttempts, minAttempts, maxImpostors, citizensWin, resolveVote, type ActiveGame, type ImpostorGame } from './game';
+import { assignBombLoser, bombExpired, createBombGame, rematchBomb, resolveBomb, type BombGame } from './bomb';
+import { createSameWaveGame, rematchSameWave, submitSameWavePick, type SameWaveGame } from './same-wave';
+import { BOMB_CATEGORIES, BOMB_PROMPTS, type BombCategoryId } from './bomb-content';
+import { SAME_WAVE_PROMPTS } from './same-wave-content';
+import { gameCatalog, type GameId } from './catalog';
+import { playerGameStats, recordActiveGameResult, totalStats } from './stats';
 import { categoryDescription, categoryLabel, translate, type MessageKey, type MessageParams } from './i18n';
 import { categories, normalizeCategorySelection, selectedCategoryIds, type CategoryId, type SelectableCategoryId } from './words';
+import { screenFromHash, type AppScreen } from './router';
 import avatar01 from './assets/avatars/avatar-01.webp';
 import avatar02 from './assets/avatars/avatar-02.webp';
 import avatar03 from './assets/avatars/avatar-03.webp';
@@ -34,6 +41,9 @@ import partyChaosImage from './assets/categories/festa-e-caos.webp';
 import spicyPersonalImage from './assets/categories/piccante-e-personale.webp';
 import filmImage from './assets/categories/film.webp';
 import hobbyImage from './assets/categories/hobby.webp';
+import impostorGameImage from './assets/games/impostore.webp';
+import bombGameImage from './assets/games/bomba.webp';
+import sameWaveGameImage from './assets/games/stessa-onda.webp';
 
 const root = document.querySelector<HTMLDivElement>('#app')!;
 const avatars = [
@@ -65,12 +75,18 @@ const legacyAvatarMap: Record<string, AvatarId> = {
   '🐸': 'avatar-05', '🤖': 'avatar-06', '🐼': 'avatar-07', '🦄': 'avatar-08',
   '🐙': 'avatar-09', '🔥': 'avatar-10', '🐱': 'avatar-11', '🕵️': 'avatar-12',
 };
-let data: AppData<Game> = { players: [], selectedIds: [], settings: { impostors: 1, maxAttempts: 1, category: 'all' }, activeGame: null, language: 'it' };
+let data: AppData<ActiveGame> = {
+  players: [], selectedIds: [], selectedGameId: 'impostor',
+  settings: { impostor: { impostors: 1, maxAttempts: 1, category: 'all' }, bomb: { category: 'all' }, sameWave: { category: 'all' } },
+  activeGame: null, language: 'it',
+};
 let revealed = false;
 let busy = false;
 let storageReady = false;
 let error = '';
 let categoryScreen = false;
+let screen: AppScreen = screenFromHash(location.hash);
+let bombTimer: number | null = null;
 let dialog: 'player' | 'rules' | 'exit' | 'delete' | null = null;
 let chosenAvatar: string = avatars[0][0];
 let draftName = '';
@@ -98,10 +114,8 @@ const avatarArt = (value: string) => {
 };
 
 function playerStatsSummary(player: Player): string {
-  const stats = player.stats ?? emptyPlayerStats();
-  const wins = stats.citizenWins + stats.impostorWins;
-  const rate = stats.gamesPlayed ? (wins / stats.gamesPlayed) * 100 : 0;
-  const formattedRate = new Intl.NumberFormat(data.language, { maximumFractionDigits: 1 }).format(rate);
+  const stats = totalStats(player.stats ?? emptyPlayerStats());
+  const formattedRate = new Intl.NumberFormat(data.language, { maximumFractionDigits: 1 }).format(stats.winRate * 100);
   return t('stats.summary', { played: stats.gamesPlayed, rate: formattedRate });
 }
 
@@ -111,7 +125,7 @@ function playerCard(p: Player): string {
   return `<div class="player-row"><button class="player ${included ? 'selected' : ''}" data-player="${p.id}" aria-pressed="${included}" ${disabled ? 'disabled' : ''}>${avatar(p)}<span class="player-copy"><span class="player-name">${escape(p.name)}</span><span class="player-stats">${playerStatsSummary(p)}</span></span><span class="check" aria-hidden="true">${included ? '✓' : '+'}</span></button><div class="player-actions"><button type="button" class="player-action" data-action="edit-player" data-player="${p.id}" aria-label="${t('action.edit')} ${escape(p.name)}" ${disabled ? 'disabled' : ''}>${t('action.edit')}</button><button type="button" class="player-action danger" data-action="delete-player" data-player="${p.id}" aria-label="${t('action.delete')} ${escape(p.name)}" ${disabled ? 'disabled' : ''}>${t('action.delete')}</button></div></div>`;
 }
 
-async function change(update: (next: AppData<Game>) => void): Promise<void> {
+async function change(update: (next: AppData<ActiveGame>) => void): Promise<void> {
   if (busy || !storageReady) return;
   busy = true;
   root.querySelectorAll<HTMLButtonElement | HTMLSelectElement>('button, select').forEach(control => { control.disabled = true; });
@@ -127,7 +141,7 @@ async function change(update: (next: AppData<Game>) => void): Promise<void> {
 }
 
 function categoryCard(category: 'all' | SelectableCategoryId): string {
-  const selection = normalizeCategorySelection(data.settings.category);
+  const selection = normalizeCategorySelection(data.settings.impostor.category);
   const selected = category === 'all'
     ? selection === 'all'
     : selection !== 'all' && (selectedCategoryIds(selection) ?? []).includes(category);
@@ -140,14 +154,14 @@ function categoryCard(category: 'all' | SelectableCategoryId): string {
 }
 
 function categoryPicker(): string {
-  const selection = normalizeCategorySelection(data.settings.category);
+  const selection = normalizeCategorySelection(data.settings.impostor.category);
   const selectedCount = selection === 'all' ? categories.length : (selectedCategoryIds(selection) ?? []).length;
   const summaryKey = selection === 'all' ? 'category.selectedAll' : selectedCount === 1 ? 'category.selectedOne' : 'category.selectedMany';
   return `<p class="category-hint">${t('category.selectHint')}</p><div class="category-picker" role="group" aria-label="${t('deck.title')}">${categoryCard('all')}${categories.map(categoryCard).join('')}</div><p class="category-summary">${t(summaryKey, { count: selectedCount })}</p>`;
 }
 
 function categorySelectionSummary(): string {
-  const selection = normalizeCategorySelection(data.settings.category);
+  const selection = normalizeCategorySelection(data.settings.impostor.category);
   const count = selection === 'all' ? categories.length : (selectedCategoryIds(selection) ?? []).length;
   const key = selection === 'all' ? 'category.selectedAll' : count === 1 ? 'category.selectedOne' : 'category.selectedMany';
   return t(key, { count });
@@ -157,23 +171,68 @@ function categoryScreenView(): string {
   return `<section class="category-screen"><div class="category-screen-head"><button class="category-screen-back" data-action="close-categories" aria-label="${t('category.back')}">←</button><div><span class="eyebrow">${t('category.eyebrow')}</span><h1>${t('category.title')}</h1></div></div>${categoryPicker()}${button('close-categories', `${t('category.done')} <span>✓</span>`)}</section>`;
 }
 
-function setup(): string {
+function impostorSetup(): string {
   const count = data.selectedIds.length;
-  const attemptLimit = maxAttempts(count, data.settings.impostors);
-  const attemptMinimum = minAttempts(count, data.settings.impostors);
-  const attempts = clampAttempts(count, data.settings.impostors, data.settings.maxAttempts);
+  const attemptLimit = maxAttempts(count, data.settings.impostor.impostors);
+  const attemptMinimum = minAttempts(count, data.settings.impostor.impostors);
+  const attempts = clampAttempts(count, data.settings.impostor.impostors, data.settings.impostor.maxAttempts);
   return `<section class="cover"><div class="cover-art"></div><div class="cover-copy"><span class="eyebrow">${t('cover.eyebrow')}</span><h1>${t('cover.title')}</h1><p>${t('cover.subtitle')}</p></div><span class="cover-tag">${t('cover.tag')}</span><span class="spark">✦</span></section>
   <section class="setup"><div class="section-heading"><div><span class="eyebrow">${t('setup.eyebrow')}</span><h2>${t('setup.title')}</h2></div><span class="count">${count}/20</span></div>
   ${data.players.length ? `<p class="helper">${t('setup.helper')}</p><div class="players">${data.players.map(playerCard).join('')}</div>` : `<div class="empty"><span>✦</span><p>${t('setup.empty')}</p></div>`}
   ${button('add', `＋ ${t('player.new')}`, 'secondary', !storageReady)}
-  <div class="setting"><div><strong>${t('game.impostors')}</strong><small>${t('game.impostorHint')}</small></div><div class="stepper"><button data-action="minus" aria-label="${t('game.fewerImpostors')}" ${data.settings.impostors <= 1 || busy ? 'disabled' : ''}>−</button><b>${data.settings.impostors}</b><button data-action="plus" aria-label="${t('game.moreImpostors')}" ${data.settings.impostors >= maxImpostors(count) || busy ? 'disabled' : ''}>+</button></div></div>
+  <div class="setting"><div><strong>${t('game.impostors')}</strong><small>${t('game.impostorHint')}</small></div><div class="stepper"><button data-action="minus" aria-label="${t('game.fewerImpostors')}" ${data.settings.impostor.impostors <= 1 || busy ? 'disabled' : ''}>−</button><b>${data.settings.impostor.impostors}</b><button data-action="plus" aria-label="${t('game.moreImpostors')}" ${data.settings.impostor.impostors >= maxImpostors(count) || busy ? 'disabled' : ''}>+</button></div></div>
   <div class="setting"><div><strong>${t('game.attempts')}</strong><small>${t('game.attemptsHint', { min: attemptMinimum, max: attemptLimit })}</small></div><div class="stepper"><button data-action="attempt-minus" aria-label="${t('game.fewerAttempts')}" ${attempts <= attemptMinimum || busy ? 'disabled' : ''}>−</button><b>${attempts}</b><button data-action="attempt-plus" aria-label="${t('game.moreAttempts')}" ${attempts >= attemptLimit || busy ? 'disabled' : ''}>+</button></div></div>
   <div class="setting category-setting"><div class="category-setting-copy"><strong>${t('deck.title')}</strong><small>${t('deck.subtitle')}</small><span>${categorySelectionSummary()}</span></div>${button('open-categories', `${t('category.change')} <span>→</span>`, 'category-open')}</div>
   ${button('start', `${t('game.start')} <span>↗</span>`, 'primary', count < 3 || !storageReady)}
   <p class="footnote">${count < 3 ? t(3 - count === 1 ? 'setup.morePlayersOne' : 'setup.morePlayersMany', { count: 3 - count }) : t('setup.passSecrets')}</p></section>`;
 }
 
-function gameView(g: Game): string {
+const gameImages: Record<GameId, string> = { impostor: impostorGameImage, bomb: bombGameImage, 'same-wave': sameWaveGameImage };
+const gameName = (id: GameId) => t(`catalog.${id === 'same-wave' ? 'sameWave' : id}.name` as MessageKey);
+
+function catalogView(): string {
+  const cards = gameCatalog.list().map(game => `<article class="catalog-card"><img class="catalog-card-image" src="${gameImages[game.id]}" alt=""/><div class="catalog-card-copy"><div class="catalog-card-head"><h2>${gameName(game.id)}</h2><span class="catalog-players">${t('catalog.players', { min: game.minPlayers, max: game.maxPlayers })}</span></div><p>${t(game.descriptionKey as MessageKey)}</p><div class="catalog-meta"><span class="catalog-players">${t('setup.sharedProfiles')}</span><button class="catalog-play" data-game="${game.id}">${t('catalog.play')} →</button></div></div></article>`).join('');
+  return `<section class="catalog-hero"><span class="eyebrow">${t('catalog.eyebrow')}</span><h1>${t('catalog.title')}</h1><p>${t('catalog.subtitle')}</p><div class="privacy-pill"><span>◇</span>${t('catalog.privacy')}</div></section><section class="game-catalog">${cards}</section>`;
+}
+
+function setupRoster(minPlayers: number): string {
+  const count = data.selectedIds.length;
+  return `<section class="setup"><div class="section-heading"><div><span class="eyebrow">${t('setup.eyebrow')}</span><h2>${t('setup.title')}</h2></div><span class="count">${count}/20</span></div><p class="shared-note">◇ ${t('setup.sharedProfiles')}</p>${data.players.length ? `<p class="helper">${t('setup.helper')}</p><div class="players">${data.players.map(playerCard).join('')}</div>` : `<div class="empty"><span>✦</span><p>${t('setup.empty')}</p></div>`}${button('add', `＋ ${t('player.new')}`, 'secondary', !storageReady)}${count < minPlayers ? `<p class="footnote">${t('setup.needPlayers', { count: minPlayers })}</p>` : ''}</section>`;
+}
+
+function gameSetupHeader(id: GameId): string {
+  const definition = gameCatalog.get(id);
+  return `<div class="game-setup-head"><button class="icon-btn" data-action="catalog" aria-label="${t('catalog.back')}">←</button><div><span class="eyebrow">${t('catalog.players', { min: definition.minPlayers, max: definition.maxPlayers })}</span><h1>${gameName(id)}</h1></div></div><section class="game-cover"><img src="${gameImages[id]}" alt=""/><div class="game-cover-copy"><h2>${gameName(id)}</h2><p>${t(definition.descriptionKey as MessageKey)}</p></div></section>`;
+}
+
+function bombSetup(): string {
+  const current = data.settings.bomb.category;
+  const categoriesMarkup = [`<button class="bomb-category ${current === 'all' ? 'selected' : ''}" data-bomb-category="all">${t('bomb.categoryAll')}</button>`, ...BOMB_CATEGORIES.map(category => `<button class="bomb-category ${current === category.id ? 'selected' : ''}" data-bomb-category="${category.id}">${escape(category.label[data.language])}</button>`)].join('');
+  return `${gameSetupHeader('bomb')}${setupRoster(2)}<section class="setup"><div class="setting"><div><strong>${t('bomb.category')}</strong><small>${t('catalog.bomb.description')}</small></div></div><div class="bomb-category-grid">${categoriesMarkup}</div>${button('start', `${t('game.start')} <span>↗</span>`, 'primary', data.selectedIds.length < 2 || !storageReady)}</section>`;
+}
+
+function sameWaveSetup(): string {
+  return `${gameSetupHeader('same-wave')}${setupRoster(3)}<section class="setup">${button('start', `${t('game.start')} <span>↗</span>`, 'primary', data.selectedIds.length < 3 || !storageReady)}</section>`;
+}
+
+function setup(): string {
+  if (data.selectedGameId === 'bomb') return bombSetup();
+  if (data.selectedGameId === 'same-wave') return sameWaveSetup();
+  return `${gameSetupHeader('impostor')}${impostorSetup()}`;
+}
+
+function statsView(): string {
+  const aggregate = data.players.reduce((sum, player) => { const value = totalStats(player.stats); return { gamesPlayed: sum.gamesPlayed + value.gamesPlayed, wins: sum.wins + value.wins, losses: sum.losses + value.losses }; }, { gamesPlayed: 0, wins: 0, losses: 0 });
+  const aggregateRate = aggregate.gamesPlayed ? aggregate.wins / aggregate.gamesPlayed : 0;
+  const playerCards = data.players.map(player => {
+    const overall = totalStats(player.stats);
+    const games = gameCatalog.list().map(game => { const value = playerGameStats(player, game.id); return `<div class="stats-game-row"><strong>${gameName(game.id)}</strong><span>${t('stats.gameLine', { played: value.gamesPlayed, wins: value.wins, losses: value.losses })}</span></div>`; }).join('');
+    return `<article class="stats-player-card"><div class="stats-player-head">${avatar(player)}<div><h2>${escape(player.name)}</h2><small>${t('stats.summary', { played: overall.gamesPlayed, rate: new Intl.NumberFormat(data.language, { maximumFractionDigits: 1 }).format(overall.winRate * 100) })}</small></div></div><div class="stats-game-list">${games}<div class="stats-game-row"><strong>${t('catalog.impostor.name')} · ${t('stats.roleSplit', { crew: player.stats.impostor.citizenWins, impostor: player.stats.impostor.impostorWins })}</strong></div></div></article>`;
+  }).join('');
+  return `<section class="stats-screen"><button class="text-btn" data-action="catalog">← ${t('stats.back')}</button><span class="eyebrow">${t('stats.eyebrow')}</span><h1>${t('stats.title')}</h1><p class="helper">${t('stats.subtitle')}</p><div class="stats-summary-grid"><div class="stat-tile"><strong>${aggregate.gamesPlayed}</strong><small>${t('stats.gamesPlayed')}</small></div><div class="stat-tile"><strong>${aggregate.wins}</strong><small>${t('stats.wins')}</small></div><div class="stat-tile"><strong>${aggregate.losses}</strong><small>${t('stats.losses')}</small></div><div class="stat-tile"><strong>${new Intl.NumberFormat(data.language, { maximumFractionDigits: 1 }).format(aggregateRate * 100)}%</strong><small>${t('stats.winRate')}</small></div></div>${data.players.length ? `<div class="stats-player-list">${playerCards}</div>` : `<div class="stats-empty">${t('stats.noPlayers')}</div>`}</section>`;
+}
+
+function impostorGameView(g: ImpostorGame): string {
   const p = g.players[g.revealIndex];
   const { word: gameWord, hint } = localizeEntry(g.entry, data.language);
   const phaseLabel = { reveal: t('game.phase.reveal'), discuss: t('game.phase.discuss'), vote: t('game.phase.vote'), result: t('game.phase.result') }[g.phase];
@@ -200,26 +259,67 @@ function gameView(g: Game): string {
   return `${top}<section class="game-screen result"><div class="confetti" aria-hidden="true">✦ · ✧ · ✦</div><span class="big-symbol">${citizensWin(g) ? '🏆' : '🕵️'}</span><p class="eyebrow">${t('game.result.masksOff')}</p><h1>${citizensWin(g) ? t('game.result.crewWin') : t('game.result.impostorsWin')}</h1><p class="helper">${t('game.result.secretWas')}</p><h2 class="answer">${escape(gameWord)}</h2><p class="attempt-status">${t('game.attemptsUsed', { used: g.attemptsUsed, max: g.maxAttempts })}</p><div class="reveal-list">${g.players.filter(p => g.impostorIds.includes(p.id)).map(p => `<div>${avatar(p)}<strong>${escape(p.name)}</strong><span>${t('game.impostor')}</span></div>`).join('')}</div><p class="helper">${t('game.accused')} ${g.players.filter(p => allAccusedIds.has(p.id)).map(p => escape(p.name)).join(', ')}</p>${button('again', `${t('game.rematch')} <span>↻</span>`)}${button('home', t('game.changeSetup'), 'text-btn')}</section>`;
 }
 
+function bombGameView(g: BombGame): string {
+  const topic = data.language === 'it' ? g.prompt.topic : g.prompt.topicEn;
+  const top = `<div class="round-top">${button('exit', '←', 'icon-btn')}<span class="eyebrow">${gameName('bomb')}</span><span class="count">${g.players.length} ${t('game.friends')}</span></div>`;
+  if (g.phase === 'result') {
+    const loser = g.players.find(player => player.id === g.loserId);
+    return `${top}<section class="game-screen result live-card"><span class="big-symbol">💥</span><p class="eyebrow">${t('bomb.result.eyebrow')}</p><h1>${t('bomb.result.title', { name: escape(loser?.name ?? '') })}</h1><p class="helper">${t('bomb.result.helper')}</p><span class="topic">${escape(topic)}</span>${button('again', `${t('game.rematch')} <span>↻</span>`)}${button('home', t('game.changeSetup'), 'text-btn')}</section>`;
+  }
+  if (g.phase === 'assigning') {
+    const players = g.players.map(player => `<button class="player" data-action="bomb-loser" data-bomb-loser="${escape(player.id)}"><span class="avatar-wrap">${avatar(player)}</span><span>${escape(player.name)}</span><span class="check">→</span></button>`).join('');
+    return `${top}<section class="game-screen bomb-assign live-card"><span class="big-symbol">💥</span><p class="eyebrow">${t('bomb.assign.eyebrow')}</p><h1>${t('bomb.assign.title')}</h1><p class="helper">${t('bomb.assign.helper')}</p><div class="players vote-players">${players}</div></section>`;
+  }
+  return `${top}<section class="game-screen live-card"><p class="eyebrow">${t('bomb.topic')}</p><span class="topic">${escape(topic)}</span><div class="bomb-orb" aria-hidden="true">💣</div><p class="eyebrow">${t('bomb.timer')}</p><div class="bomb-timer" id="bomb-timer" role="timer" aria-live="polite">${bombRemaining(g.deadlineAt)}</div><p class="helper">${t('bomb.tick')}</p></section>`;
+}
+
+function bombRemaining(deadlineAt: number): string {
+  return `${Math.max(0, Math.ceil((deadlineAt - Date.now()) / 1000))}s`;
+}
+
+function sameWaveGameView(g: SameWaveGame): string {
+  const prompt = data.language === 'it' ? g.prompt.prompt : g.prompt.promptEn;
+  const options = data.language === 'it' ? g.prompt.options : g.prompt.optionsEn;
+  const top = `<div class="round-top">${button('exit', '←', 'icon-btn')}<span class="eyebrow">${gameName('same-wave')}</span><span class="count">${g.players.length} ${t('game.friends')}</span></div>`;
+  if (g.phase === 'result') {
+    const groups = options.map((option, index) => { const members = g.players.filter(player => g.picks[player.id] === String(index)); if (!members.length) return ''; const winner = members.some(player => g.winnerIds.includes(player.id)); return `<div class="wave-group ${winner ? 'winner' : ''}"><strong>${escape(option)}</strong><div class="wave-players">${members.map(player => `<span class="wave-player">${escape(player.name)}</span>`).join('')}</div></div>`; }).join('');
+    return `${top}<section class="game-screen result live-card"><span class="big-symbol">〰</span><p class="eyebrow">${t('sameWave.result.eyebrow')}</p><h1>${t('sameWave.result.title')}</h1><p class="helper">${g.winnerIds.length ? t('sameWave.result.winners', { count: g.winnerIds.length }) : t('sameWave.result.noMatch')}</p><h2 class="answer">${escape(prompt)}</h2><div class="wave-groups">${groups}</div>${button('again', `${t('game.rematch')} <span>↻</span>`)}${button('home', t('game.changeSetup'), 'text-btn')}</section>`;
+  }
+  const player = g.players[g.currentPlayerIndex];
+  const optionsMarkup = options.map((option, index) => `<button class="wave-option" data-wave-choice="${index}">${escape(option)}</button>`).join('');
+  return `${top}<section class="game-screen live-card"><p class="eyebrow">${t('sameWave.pass')}</p><h1>${escape(player.name)}</h1><p class="helper">${t('sameWave.noPeeking')}</p><div id="secret-card" class="secret-card ${revealed ? 'flipped' : ''}">${revealed ? `<p class="eyebrow">${t('sameWave.choose')}</p><h2>${escape(prompt)}</h2><div class="wave-options">${optionsMarkup}</div>` : `${avatarArt(player.avatar)}<div class="swipe-prompt"><span>↑</span><b>${t('sameWave.reveal')}</b><small>${t('game.revealButtonHint')}</small></div>`}</div>${revealed ? '' : button('reveal', `${t('game.iAm')} ${escape(player.name)} · ${t('sameWave.reveal')}`)}<p class="footnote">${g.currentPlayerIndex + 1} ${t('game.of')} ${g.players.length} · ${t('game.appHidesSecret')}</p></section>`;
+}
+
+function activeGameView(game: ActiveGame): string {
+  if (game.gameId === 'bomb') return bombGameView(game);
+  if (game.gameId === 'same-wave') return sameWaveGameView(game);
+  return impostorGameView(game);
+}
+
 function playerDialogView(): string {
   const editing = editingPlayerId ? data.players.find(p => p.id === editingPlayerId) : null;
   const title = editing ? t('player.editTitle') : t('player.newTitle');
   const helper = editing ? t('player.editHelper') : t('player.newHelper');
   const submit = editing ? t('player.saveChanges') : t('player.add');
-  const stats = draftStats;
+  const stats = draftStats.impostor;
   return `<h2 id="dialog-title">${title}</h2><p class="helper">${helper}</p><form id="player-form"><label for="name">${t('player.nameLabel')}</label><input id="name" name="name" placeholder="${t('player.namePlaceholder')}" value="${escape(draftName)}" maxlength="24" required autocomplete="off"/><span class="field-label">${t('player.avatarLabel')}</span><div class="avatar-upload">${avatarMarkup(chosenAvatar, 'avatar-preview')}<div><label class="upload-label" for="avatar-upload">${t('player.upload')}</label><input id="avatar-upload" type="file" accept="image/*" capture="user"/></div></div><p class="upload-hint">${t('player.photoHint')}</p><button type="button" class="avatar-random" data-action="random-avatar">${t('player.randomAvatar')}</button><div class="avatar-picker">${avatars.map(([id, label], index) => `<button type="button" data-avatar="${id}" aria-label="${t('player.avatar', { index: index + 1, name: label })}" aria-pressed="${id === chosenAvatar}" class="${id === chosenAvatar ? 'chosen' : ''}">${avatarMarkup(id)}</button>`).join('')}</div><fieldset class="stats-editor"><legend>${t('stats.editorTitle')}</legend><p class="stats-helper">${t('stats.editorHelper')}</p><label for="stats-gamesPlayed">${t('stats.gamesPlayed')}</label><input id="stats-gamesPlayed" data-stat="gamesPlayed" type="number" min="0" step="1" value="${stats.gamesPlayed}" required/><label for="stats-citizenWins">${t('stats.citizenWins')}</label><input id="stats-citizenWins" data-stat="citizenWins" type="number" min="0" step="1" value="${stats.citizenWins}" required/><label for="stats-citizenLosses">${t('stats.citizenLosses')}</label><input id="stats-citizenLosses" data-stat="citizenLosses" type="number" min="0" step="1" value="${stats.citizenLosses}" required/><label for="stats-impostorWins">${t('stats.impostorWins')}</label><input id="stats-impostorWins" data-stat="impostorWins" type="number" min="0" step="1" value="${stats.impostorWins}" required/><label for="stats-impostorLosses">${t('stats.impostorLosses')}</label><input id="stats-impostorLosses" data-stat="impostorLosses" type="number" min="0" step="1" value="${stats.impostorLosses}" required/></fieldset><p id="form-error" class="error" role="alert"></p><p class="error upload-error" role="alert">${escape(photoError)}</p><button class="primary" type="submit">${submit} <span>${editing ? '✓' : '＋'}</span></button></form>`;
 }
 
 function readDraftStats(): PlayerStats | null {
-  const keys: (keyof PlayerStats)[] = ['gamesPlayed', 'citizenWins', 'citizenLosses', 'impostorWins', 'impostorLosses'];
-  const values = {} as PlayerStats;
+  const keys: (keyof ImpostorStats)[] = ['gamesPlayed', 'citizenWins', 'citizenLosses', 'impostorWins', 'impostorLosses'];
+  const values = structuredClone(draftStats);
   for (const key of keys) {
     const input = root.querySelector<HTMLInputElement>(`[data-stat="${key}"]`);
     const value = Number(input?.value);
     if (!input || !Number.isSafeInteger(value) || value < 0) return null;
-    values[key] = value;
+    values.impostor[key] = value;
   }
-  const outcomes = values.citizenWins + values.citizenLosses + values.impostorWins + values.impostorLosses;
-  return values.gamesPlayed >= outcomes ? values : null;
+  const role = values.impostor;
+  const outcomes = role.citizenWins + role.citizenLosses + role.impostorWins + role.impostorLosses;
+  if (role.gamesPlayed !== outcomes) return null;
+  role.wins = role.citizenWins + role.impostorWins;
+  role.losses = role.citizenLosses + role.impostorLosses;
+  return values;
 }
 
 function deleteDialogView(): string {
@@ -228,21 +328,51 @@ function deleteDialogView(): string {
   return `<h2 id="dialog-title">${t('player.deleteTitle')}</h2><p class="helper">${t('player.deleteHelper', { name: escape(player.name) })}</p>${button('confirm-delete', t('player.confirmDelete'))}${button('close', t('action.cancel'), 'text-btn')}`;
 }
 
+type HelpContext = 'catalog' | 'stats' | 'impostor' | 'bomb' | 'sameWave';
+const helpCopy: Record<HelpContext, { title: MessageKey; body: MessageKey }> = {
+  catalog: { title: 'help.catalog.title', body: 'help.catalog.body' },
+  stats: { title: 'help.stats.title', body: 'help.stats.body' },
+  impostor: { title: 'help.impostor.title', body: 'help.impostor.body' },
+  bomb: { title: 'help.bomb.title', body: 'help.bomb.body' },
+  sameWave: { title: 'help.sameWave.title', body: 'help.sameWave.body' },
+};
+
+function currentHelpContext(): HelpContext {
+  if (data.activeGame) return data.activeGame.gameId === 'same-wave' ? 'sameWave' : data.activeGame.gameId;
+  if (screen === 'stats') return 'stats';
+  if (screen === 'setup') return data.selectedGameId === 'same-wave' ? 'sameWave' : data.selectedGameId;
+  return 'catalog';
+}
+
+function helpDialogView(): string {
+  const copy = helpCopy[currentHelpContext()];
+  return `<h2 id="dialog-title">${t(copy.title)}</h2><p class="helper">${t(copy.body)}</p><button type="button" class="text-btn" data-action="close">${t('action.close')}</button>`;
+}
+
 function dialogView(): string {
   if (!dialog) return '';
   let content = '';
   if (dialog === 'player') content = playerDialogView();
-  if (dialog === 'rules') content = `<h2 id="dialog-title">${t('rules.title')}</h2><ol class="rules"><li><b>${t('rules.prepareTitle')}</b><p>${t('rules.prepareText')}</p></li><li><b>${t('rules.passTitle')}</b><p>${t('rules.passText')}</p></li><li><b>${t('rules.talkTitle')}</b><p>${t('rules.talkText')}</p></li><li><b>${t('rules.catchTitle')}</b><p>${t('rules.catchText')}</p></li></ol><p class="privacy">${t('rules.privacy')}</p>`;
+  if (dialog === 'rules') content = helpDialogView();
   if (dialog === 'exit') content = `<h2 id="dialog-title">${t('exit.title')}</h2><p class="helper">${t('exit.helper')}</p>${button('home', t('exit.confirm'))}`;
   if (dialog === 'delete') content = deleteDialogView();
   return `<dialog aria-labelledby="dialog-title"><div class="dialog-inner">${button('close', '<span aria-hidden="true">×</span>', 'close icon-btn', false, t('action.close'))}${content}</div></dialog>`;
 }
 
-function render(): void {
+function resetScrollToTop(): void {
+  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
+}
+
+function render(resetScroll = false): void {
   document.documentElement.lang = data.language;
-  document.body.classList.add('is-playing');
+  document.body.classList.toggle('is-playing', Boolean(data.activeGame));
   document.title = t('document.title');
-  root.innerHTML = `<main class="shell gameplay"><header><a class="brand" href="./" aria-label="Impostor"><span class="brand-mark">◈</span> IMPOSTOR</a><div class="header-actions"><button data-action="language" class="language" aria-label="${t(data.language === 'it' ? 'language.switchToEnglish' : 'language.switchToItalian')}">${data.language.toUpperCase()} <span>⌄</span></button>${button('rules', '?', 'icon-btn')}</div></header>${error ? `<div class="error-banner" role="alert">${escape(error)}${!storageReady ? button('retry', t('action.retry'), 'text-btn') : ''}</div>` : ''}${data.activeGame ? gameView(data.activeGame) : categoryScreen ? categoryScreenView() : setup()}<footer><span>◈</span> ${t('footer.onePhone')}<span>·</span>${t('footer.onDevice')}</footer></main>${dialogView()}`;
+  const content = data.activeGame ? activeGameView(data.activeGame) : categoryScreen ? categoryScreenView() : screen === 'stats' ? statsView() : screen === 'setup' ? setup() : catalogView();
+  const nav = data.activeGame ? '' : `<button data-action="catalog" class="nav-btn ${screen === 'catalog' ? 'active' : ''}" aria-label="${t('nav.catalog')}"><span class="nav-icon" aria-hidden="true">⌂</span><span class="nav-label">${t('nav.catalog')}</span></button><button data-action="stats" class="nav-btn ${screen === 'stats' ? 'active' : ''}" aria-label="${t('nav.stats')}"><span class="nav-icon" aria-hidden="true">↗</span><span class="nav-label">${t('nav.stats')}</span></button>`;
+  const mark = `<svg class="brand-icon" viewBox="0 0 48 48" aria-hidden="true"><circle class="brand-icon-ring" cx="24" cy="24" r="17"/><circle class="brand-icon-dot dot-one" cx="17" cy="18" r="3.5"/><circle class="brand-icon-dot dot-two" cx="31" cy="18" r="3.5"/><circle class="brand-icon-dot dot-three" cx="24" cy="31" r="3.5"/></svg>`;
+  root.innerHTML = `<main class="shell ${data.activeGame ? 'gameplay' : 'catalog-shell'}"><header><button class="brand" data-action="catalog" aria-label="Pocket Circle"><span class="brand-mark">${mark}</span><span class="brand-word"><strong>POCKET CIRCLE</strong><small>LOCAL PARTY GAMES</small></span></button><div class="header-actions">${nav}<button data-action="language" class="language" aria-label="${t(data.language === 'it' ? 'language.switchToEnglish' : 'language.switchToItalian')}">${data.language.toUpperCase()}</button>${button('rules', '?', 'icon-btn', false, t('rules.open'))}</div></header>${error ? `<div class="error-banner" role="alert">${escape(error)}${!storageReady ? button('retry', t('action.retry'), 'text-btn') : ''}</div>` : ''}${content}<footer><span>◈</span> ${t('footer.onePhone')}<span>·</span>${t('footer.onDevice')}</footer></main>${dialogView()}`;
+  if (resetScroll) resetScrollToTop();
   root.querySelector('[data-action="rules"]')?.setAttribute('aria-label', t('rules.open'));
   const modal = root.querySelector('dialog');
   if (modal) {
@@ -251,6 +381,32 @@ function render(): void {
     modal.addEventListener('click', e => { if (e.target === modal) { dialog = null; editingPlayerId = null; deletingPlayerId = null; photoError = ''; render(); } });
     root.querySelector<HTMLInputElement>('#name')?.focus();
   }
+  scheduleBomb();
+}
+
+function scheduleBomb(): void {
+  if (bombTimer !== null) window.clearInterval(bombTimer);
+  bombTimer = null;
+  const game = data.activeGame;
+  if (!game || game.gameId !== 'bomb' || game.phase !== 'playing') return;
+  const tick = () => {
+    const active = data.activeGame;
+    if (!active || active.gameId !== 'bomb' || active.phase !== 'playing') { if (bombTimer !== null) window.clearInterval(bombTimer); bombTimer = null; return; }
+    const timer = root.querySelector<HTMLElement>('#bomb-timer');
+    if (timer) timer.textContent = bombRemaining(active.deadlineAt);
+    if (bombExpired(active)) { if (bombTimer !== null) window.clearInterval(bombTimer); bombTimer = null; void finishBomb(); }
+  };
+  bombTimer = window.setInterval(tick, 250);
+  tick();
+}
+
+async function finishBomb(): Promise<void> {
+  await change(next => {
+    const game = next.activeGame;
+    if (!game || game.gameId !== 'bomb' || !bombExpired(game)) return;
+    resolveBomb(game);
+  });
+  navigator.vibrate?.([80, 40, 120]);
 }
 
 function readAvatarPhoto(file: File): Promise<string> {
@@ -276,8 +432,8 @@ function readAvatarPhoto(file: File): Promise<string> {
 root.addEventListener('input', e => {
   const target = e.target as HTMLInputElement;
   if (target.id === 'name') draftName = target.value;
-  const stat = target.dataset.stat as keyof PlayerStats | undefined;
-  if (stat && stat in draftStats) draftStats[stat] = Number(target.value) || 0;
+  const stat = target.dataset.stat as keyof ImpostorStats | undefined;
+  if (stat && stat in draftStats.impostor) draftStats.impostor[stat] = Number(target.value) || 0;
 });
 root.addEventListener('change', e => {
   const target = e.target as HTMLInputElement | HTMLSelectElement;
@@ -315,22 +471,39 @@ root.addEventListener('submit', async e => {
 root.addEventListener('click', async e => {
   const target = (e.target as HTMLElement).closest<HTMLButtonElement>('button');
   if (!target || target.disabled || busy) return;
-  const { action, player, avatar: pick, accuse, category } = target.dataset;
+  const { action, player, avatar: pick, accuse, category, game: gameId, bombCategory, waveChoice } = target.dataset;
+  if (gameId && gameCatalog.list().some(game => game.id === gameId)) {
+    await change(next => { next.selectedGameId = gameId as GameId; });
+    screen = 'setup'; location.hash = 'setup'; render(true); return;
+  }
+  if (bombCategory && (bombCategory === 'all' || BOMB_CATEGORIES.some(category => category.id === bombCategory))) {
+    await change(next => { next.settings.bomb.category = bombCategory; }); return;
+  }
+  if (waveChoice !== undefined) {
+    revealed = false;
+    await change(next => {
+      const game = next.activeGame;
+      if (!game || game.gameId !== 'same-wave') return;
+      submitSameWavePick(game, game.players[game.currentPlayerIndex].id, waveChoice);
+      if (game.phase === 'result' && !game.scoreRecorded) { next.players = recordActiveGameResult(next.players, game); game.scoreRecorded = true; }
+    });
+    resetScrollToTop(); return;
+  }
   if (pick && avatars.some(([id]) => id === pick)) { chosenAvatar = pick as AvatarId; photoError = ''; render(); return; }
   if (action === 'random-avatar') { chosenAvatar = avatars[Math.floor(Math.random() * avatars.length)][0]; photoError = ''; render(); return; }
-  if (action === 'open-categories') { categoryScreen = true; window.scrollTo(0, 0); render(); return; }
-  if (action === 'close-categories') { categoryScreen = false; window.scrollTo(0, 0); render(); return; }
+  if (action === 'open-categories') { categoryScreen = true; render(true); return; }
+  if (action === 'close-categories') { categoryScreen = false; render(true); return; }
   if (category && (category === 'all' || categories.includes(category as SelectableCategoryId))) {
     await change(d => {
       if (category === 'all') {
-        d.settings.category = 'all';
+        d.settings.impostor.category = 'all';
         return;
       }
-      const current = selectedCategoryIds(normalizeCategorySelection(d.settings.category)) ?? [];
+      const current = selectedCategoryIds(normalizeCategorySelection(d.settings.impostor.category)) ?? [];
       const next = current.includes(category as SelectableCategoryId)
         ? current.filter(item => item !== category)
         : [...current, category as SelectableCategoryId];
-      d.settings.category = next.length === 0 ? 'all' : next.length === 1 ? next[0] : next;
+      d.settings.impostor.category = next.length === 0 ? 'all' : next.length === 1 ? next[0] : next;
     });
     return;
   }
@@ -359,12 +532,14 @@ root.addEventListener('click', async e => {
   if (player) { await change(d => {
     if (d.selectedIds.includes(player)) d.selectedIds = d.selectedIds.filter(id => id !== player);
     else if (d.selectedIds.length < 20) d.selectedIds.push(player);
-    d.settings.impostors = Math.min(d.settings.impostors, maxImpostors(d.selectedIds.length));
-    d.settings.maxAttempts = clampAttempts(d.selectedIds.length, d.settings.impostors, d.settings.maxAttempts);
+    d.settings.impostor.impostors = Math.min(d.settings.impostor.impostors, maxImpostors(d.selectedIds.length));
+    d.settings.impostor.maxAttempts = clampAttempts(d.selectedIds.length, d.settings.impostor.impostors, d.settings.impostor.maxAttempts);
   }); return; }
-  if (accuse) { await change(d => { const g = d.activeGame!; if (g.eliminatedIds.includes(accuse)) return; if (g.accusedIds.includes(accuse)) g.accusedIds = g.accusedIds.filter(id => id !== accuse); else if (g.accusedIds.length < 1) g.accusedIds.push(accuse); }); return; }
+  if (accuse) { await change(d => { const g = d.activeGame; if (!g || g.gameId !== 'impostor' || g.eliminatedIds.includes(accuse)) return; if (g.accusedIds.includes(accuse)) g.accusedIds = g.accusedIds.filter(id => id !== accuse); else if (g.accusedIds.length < 1) g.accusedIds.push(accuse); }); return; }
   switch (action) {
     case 'retry': await init(); break;
+    case 'catalog': screen = 'catalog'; categoryScreen = false; location.hash = 'catalog'; render(true); break;
+    case 'stats': screen = 'stats'; categoryScreen = false; location.hash = 'stats'; render(true); break;
     case 'language': revealed = false; await change(d => { d.language = d.language === 'it' ? 'en' : 'it'; }); break;
     case 'rules': revealed = false; dialog = 'rules'; render(); break;
     case 'add': draftName = ''; draftStats = emptyPlayerStats(); editingPlayerId = null; deletingPlayerId = null; photoError = ''; chosenAvatar = avatars[Math.floor(Math.random() * avatars.length)][0]; dialog = 'player'; render(); break;
@@ -375,23 +550,48 @@ root.addEventListener('click', async e => {
       await change(d => {
         d.players = d.players.filter(p => p.id !== playerId);
         d.selectedIds = d.selectedIds.filter(id => id !== playerId);
-        d.settings.impostors = Math.min(d.settings.impostors, maxImpostors(d.selectedIds.length));
-        d.settings.maxAttempts = clampAttempts(d.selectedIds.length, d.settings.impostors, d.settings.maxAttempts);
+        d.settings.impostor.impostors = Math.min(d.settings.impostor.impostors, maxImpostors(d.selectedIds.length));
+        d.settings.impostor.maxAttempts = clampAttempts(d.selectedIds.length, d.settings.impostor.impostors, d.settings.impostor.maxAttempts);
       });
       if (!error) { dialog = null; deletingPlayerId = null; photoError = ''; render(); }
       break;
     }
-    case 'minus': await change(d => { d.settings.impostors = Math.max(1, d.settings.impostors - 1); d.settings.maxAttempts = clampAttempts(d.selectedIds.length, d.settings.impostors, d.settings.maxAttempts); }); break;
-    case 'plus': await change(d => { d.settings.impostors = Math.min(maxImpostors(d.selectedIds.length), d.settings.impostors + 1); d.settings.maxAttempts = clampAttempts(d.selectedIds.length, d.settings.impostors, d.settings.maxAttempts); }); break;
-    case 'attempt-minus': await change(d => { d.settings.maxAttempts = clampAttempts(d.selectedIds.length, d.settings.impostors, d.settings.maxAttempts - 1); }); break;
-    case 'attempt-plus': await change(d => { d.settings.maxAttempts = clampAttempts(d.selectedIds.length, d.settings.impostors, d.settings.maxAttempts + 1); }); break;
-    case 'start': case 'again': categoryScreen = false; revealed = false; await change(d => { d.activeGame = createGame(selected(), d.settings, d.activeGame?.entry.word); }); window.scrollTo(0, 0); break;
+    case 'minus': await change(d => { d.settings.impostor.impostors = Math.max(1, d.settings.impostor.impostors - 1); d.settings.impostor.maxAttempts = clampAttempts(d.selectedIds.length, d.settings.impostor.impostors, d.settings.impostor.maxAttempts); }); break;
+    case 'plus': await change(d => { d.settings.impostor.impostors = Math.min(maxImpostors(d.selectedIds.length), d.settings.impostor.impostors + 1); d.settings.impostor.maxAttempts = clampAttempts(d.selectedIds.length, d.settings.impostor.impostors, d.settings.impostor.maxAttempts); }); break;
+    case 'attempt-minus': await change(d => { d.settings.impostor.maxAttempts = clampAttempts(d.selectedIds.length, d.settings.impostor.impostors, d.settings.impostor.maxAttempts - 1); }); break;
+    case 'attempt-plus': await change(d => { d.settings.impostor.maxAttempts = clampAttempts(d.selectedIds.length, d.settings.impostor.impostors, d.settings.impostor.maxAttempts + 1); }); break;
+    case 'start': categoryScreen = false; revealed = false; await change(d => {
+      const players = d.players.filter(player => d.selectedIds.includes(player.id));
+      if (d.selectedGameId === 'bomb') {
+        const category = d.settings.bomb.category;
+        const prompts = category === 'all' ? BOMB_PROMPTS : BOMB_PROMPTS.filter(prompt => prompt.category === category);
+        d.activeGame = createBombGame(players, prompts[Math.floor(Math.random() * prompts.length)]);
+      } else if (d.selectedGameId === 'same-wave') {
+        d.activeGame = createSameWaveGame(players, SAME_WAVE_PROMPTS[Math.floor(Math.random() * SAME_WAVE_PROMPTS.length)]);
+      } else d.activeGame = createGame(players, d.settings.impostor);
+    }); resetScrollToTop(); break;
+    case 'again': categoryScreen = false; revealed = false; await change(d => {
+      const game = d.activeGame;
+      if (!game) return;
+      if (game.gameId === 'bomb') {
+        const category = d.settings.bomb.category;
+        const prompts = category === 'all' ? BOMB_PROMPTS : BOMB_PROMPTS.filter(prompt => prompt.category === category);
+        d.activeGame = rematchBomb(game, prompts);
+      } else if (game.gameId === 'same-wave') d.activeGame = rematchSameWave(game, SAME_WAVE_PROMPTS);
+      else d.activeGame = createGame(game.players, d.settings.impostor, game.entry.word);
+    }); resetScrollToTop(); break;
+    case 'bomb-loser': await change(d => {
+      const game = d.activeGame;
+      if (!game || game.gameId !== 'bomb' || game.phase !== 'assigning' || !target.dataset.bombLoser) return;
+      assignBombLoser(game, target.dataset.bombLoser);
+      if (!game.scoreRecorded) { d.players = recordActiveGameResult(d.players, game); game.scoreRecorded = true; }
+    }); navigator.vibrate?.([30, 40, 30]); break;
     case 'reveal': revealCard(); break;
-    case 'next': revealed = false; await change(d => { const g = d.activeGame!; if (g.revealIndex + 1 < g.players.length) g.revealIndex++; else g.phase = 'discuss'; }); window.scrollTo(0, 0); break;
-    case 'vote': case 'discuss': await change(d => { d.activeGame!.phase = action; }); window.scrollTo(0, 0); break;
-    case 'result': await change(d => { const g = d.activeGame!; const resolution = resolveVote(g); if (resolution === 'result') { g.phase = 'result'; if (!g.scoreRecorded) { d.players = recordGameResult(d.players, g); g.scoreRecorded = true; } } else if (resolution === 'continue') g.phase = 'discuss'; }); navigator.vibrate?.([30, 40, 30]); window.scrollTo(0, 0); break;
+    case 'next': revealed = false; await change(d => { const g = d.activeGame; if (!g || g.gameId !== 'impostor') return; if (g.revealIndex + 1 < g.players.length) g.revealIndex++; else g.phase = 'discuss'; }); resetScrollToTop(); break;
+    case 'vote': case 'discuss': await change(d => { const game = d.activeGame; if (game?.gameId === 'impostor') game.phase = action; }); resetScrollToTop(); break;
+    case 'result': await change(d => { const g = d.activeGame; if (!g || g.gameId !== 'impostor') return; const resolution = resolveVote(g); if (resolution === 'result') { g.phase = 'result'; if (!g.scoreRecorded) { d.players = recordActiveGameResult(d.players, g); g.scoreRecorded = true; } } else if (resolution === 'continue') g.phase = 'discuss'; }); navigator.vibrate?.([30, 40, 30]); resetScrollToTop(); break;
     case 'exit': revealed = false; dialog = 'exit'; editingPlayerId = null; deletingPlayerId = null; photoError = ''; render(); break;
-    case 'home': categoryScreen = false; dialog = null; revealed = false; await change(d => { d.activeGame = null; }); window.scrollTo(0, 0); break;
+    case 'home': categoryScreen = false; dialog = null; revealed = false; screen = 'setup'; location.hash = 'setup'; await change(d => { d.activeGame = null; }); resetScrollToTop(); break;
   }
 });
 // Never persist an exposed card: reloads, app switching and history restore conceal it.
@@ -399,27 +599,32 @@ function hideSecret() { if (revealed) { revealed = false; render(); } }
 document.addEventListener('visibilitychange', () => { if (document.hidden) hideSecret(); });
 window.addEventListener('pagehide', hideSecret);
 window.addEventListener('blur', hideSecret);
+window.addEventListener('hashchange', () => {
+  if (data.activeGame) return;
+  screen = location.hash === '#stats' ? 'stats' : location.hash === '#setup' ? 'setup' : 'catalog';
+  categoryScreen = false;
+  render(true);
+});
 
 async function init() {
   try {
-    const saved = await loadData<Game>();
+    const saved = await loadData<ActiveGame>();
     if (saved) data = saved;
     if (data.activeGame) {
       const migrated = structuredClone(data);
       const active = migrated.activeGame!;
       let needsSave = false;
-      const allowedAttempts = maxAttempts(active.players.length, active.impostorIds.length);
-      const minimumAttempts = minAttempts(active.players.length, active.impostorIds.length);
-      if (!Number.isInteger(active.maxAttempts) || active.maxAttempts < minimumAttempts || active.maxAttempts > allowedAttempts) {
-        const configuredAttempts = Number.isInteger(active.maxAttempts) ? active.maxAttempts : minimumAttempts;
-        active.maxAttempts = clampAttempts(active.players.length, active.impostorIds.length, configuredAttempts);
-        needsSave = true;
+      if (active.gameId === 'impostor') {
+        const allowedAttempts = maxAttempts(active.players.length, active.impostorIds.length);
+        const minimumAttempts = minAttempts(active.players.length, active.impostorIds.length);
+        if (!Number.isInteger(active.maxAttempts) || active.maxAttempts < minimumAttempts || active.maxAttempts > allowedAttempts) { active.maxAttempts = clampAttempts(active.players.length, active.impostorIds.length, active.maxAttempts ?? minimumAttempts); needsSave = true; }
+        if (!Number.isInteger(active.attemptsUsed)) { active.attemptsUsed = 0; needsSave = true; }
+        if (!Array.isArray(active.eliminatedIds)) { active.eliminatedIds = []; needsSave = true; }
+        if (!Array.isArray(active.foundImpostorIds)) { active.foundImpostorIds = []; needsSave = true; }
+        if (typeof active.lastVoteWasImpostor !== 'boolean' && active.lastVoteWasImpostor !== null) { active.lastVoteWasImpostor = null; needsSave = true; }
       }
-      if (!Number.isInteger(active.attemptsUsed)) { active.attemptsUsed = 0; needsSave = true; }
-      if (!Array.isArray(active.eliminatedIds)) { active.eliminatedIds = []; needsSave = true; }
-      if (!Array.isArray(active.foundImpostorIds)) { active.foundImpostorIds = []; needsSave = true; }
-      if (typeof active.lastVoteWasImpostor !== 'boolean' && active.lastVoteWasImpostor !== null) { active.lastVoteWasImpostor = null; needsSave = true; }
-      if (active.phase === 'result' && !active.scoreRecorded) { migrated.players = recordGameResult(migrated.players, active); active.scoreRecorded = true; needsSave = true; }
+      if (active.gameId === 'bomb' && active.phase === 'playing' && bombExpired(active)) { resolveBomb(active); needsSave = true; }
+      if (active.phase === 'result' && !active.scoreRecorded) { migrated.players = recordActiveGameResult(migrated.players, active); active.scoreRecorded = true; needsSave = true; }
       if (needsSave) { await saveData(migrated); data = migrated; }
     }
     storageReady = true;
@@ -445,8 +650,8 @@ if (modelContext) {
       annotations: { readOnlyHint: true, untrustedContentHint: false },
       execute(input: unknown) {
         if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).length) throw new Error('Expected an empty object');
-        const selected = selectedCategoryIds(normalizeCategorySelection(data.settings.category)) ?? categories;
-        return { language: data.language, selectedPlayers: data.selectedIds.length, impostors: data.settings.impostors, categorySelection: data.settings.category, categoryLabels: selected.map(category => categoryLabel(data.language, category)), phase: data.activeGame?.phase ?? 'setup', storageReady };
+        const selected = selectedCategoryIds(normalizeCategorySelection(data.settings.impostor.category)) ?? categories;
+        return { language: data.language, selectedPlayers: data.selectedIds.length, impostors: data.settings.impostor.impostors, categorySelection: data.settings.impostor.category, categoryLabels: selected.map(category => categoryLabel(data.language, category)), phase: data.activeGame?.phase ?? 'setup', storageReady };
       },
     }, { signal: lifecycle.signal })).catch(() => console.warn('Game setup tool registration unavailable'));
   } catch { console.warn('Game setup tool registration unavailable'); }
@@ -454,7 +659,8 @@ if (modelContext) {
 }
 
 function revealCard() {
-  if (data.activeGame?.phase !== 'reveal' || revealed) return;
+  const game = data.activeGame;
+  if (!game || revealed || !((game.gameId === 'impostor' && game.phase === 'reveal') || (game.gameId === 'same-wave' && game.phase === 'picking'))) return;
   revealed = true;
   navigator.vibrate?.(18);
   render();
@@ -462,7 +668,8 @@ function revealCard() {
 let swipeStart: { y: number; id: number } | null = null;
 root.addEventListener('pointerdown', event => {
   const card = (event.target as HTMLElement).closest<HTMLElement>('#secret-card');
-  if (!card || revealed || data.activeGame?.phase !== 'reveal') return;
+  const game = data.activeGame;
+  if (!card || revealed || !game || !((game.gameId === 'impostor' && game.phase === 'reveal') || (game.gameId === 'same-wave' && game.phase === 'picking'))) return;
   swipeStart = { y: event.clientY, id: event.pointerId };
   card.setPointerCapture(event.pointerId);
 });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { Player } from "./db";
-import { citizensWin, createGame, localizeEntry, recordGameResult, resolveVote } from "./game";
-import type { CategorySelection } from "./words";
+import type { Player } from "../src/db";
+import { citizensWin, createGame, localizeEntry, recordGameResult, resolveVote } from "../src/game";
+import type { CategorySelection } from "../src/words";
 
 function makePlayers(count: number): Player[] {
   return Array.from({ length: count }, (_, index) => ({

@@ -1,12 +1,27 @@
 import type { Locale } from './i18n';
-import { isCategorySelection, type CategorySelection } from './words';
+import { isCategorySelection, words, type CategorySelection } from './words';
+import type { GameId } from './catalog';
+import { BOMB_CATEGORY_IDS, BOMB_PROMPTS } from './bomb-content';
+import { SAME_WAVE_PROMPTS } from './same-wave-content';
+export type { GameId } from './catalog';
 
-export interface PlayerStats {
+export interface GameStats {
   gamesPlayed: number;
+  wins: number;
+  losses: number;
+}
+
+export interface ImpostorStats extends GameStats {
   citizenWins: number;
   citizenLosses: number;
   impostorWins: number;
   impostorLosses: number;
+}
+
+export interface PlayerStats {
+  impostor: ImpostorStats;
+  bomb: GameStats;
+  sameWave: GameStats;
 }
 
 export interface Player {
@@ -23,60 +38,52 @@ export interface GameSettings {
   category: CategorySelection;
 }
 
-export interface AppData<T> {
+export interface BombSettings {
+  category: string;
+}
+
+export interface SameWaveSettings {
+  category: string;
+}
+
+export interface SettingsByGame {
+  impostor: GameSettings;
+  bomb: BombSettings;
+  sameWave: SameWaveSettings;
+}
+
+export interface AppData<T = unknown> {
   players: Player[];
   selectedIds: string[];
-  settings: GameSettings;
+  selectedGameId: GameId;
+  settings: SettingsByGame;
   language: Locale;
   activeGame: T | null;
 }
 
-const DATABASE_NAME = "impostor-game";
+const DATABASE_NAME = 'impostor-game';
 const DATABASE_VERSION = 1;
-const STORE_NAME = "snapshot";
-const SNAPSHOT_KEY = "current";
+const STORE_NAME = 'snapshot';
+const SNAPSHOT_KEY = 'current';
 
-function unsupported(): Error {
-  return new Error("IndexedDB is not supported");
-}
+function unsupported(): Error { return new Error('IndexedDB is not supported'); }
 
 function openDatabase(): Promise<IDBDatabase> {
-  if (typeof indexedDB === "undefined") {
-    return Promise.reject(unsupported());
-  }
-
+  if (typeof indexedDB === 'undefined') return Promise.reject(unsupported());
   return new Promise((resolve, reject) => {
     let request: IDBOpenDBRequest;
     let settled = false;
-
-    const fail = (error: Error) => {
-      if (!settled) {
-        settled = true;
-        reject(error);
-      }
-    };
-
-    try {
-      request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
-    } catch (error) {
-      reject(error);
-      return;
-    }
-
+    const fail = (error: Error) => { if (!settled) { settled = true; reject(error); } };
+    try { request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION); } catch (error) { reject(error); return; }
     request.onupgradeneeded = () => {
       const database = request.result;
-      if (!database.objectStoreNames.contains(STORE_NAME)) {
-        database.createObjectStore(STORE_NAME);
-      }
+      if (!database.objectStoreNames.contains(STORE_NAME)) database.createObjectStore(STORE_NAME);
     };
-    request.onblocked = () => fail(new Error("IndexedDB open was blocked"));
-    request.onerror = () => fail(request.error ?? new Error("IndexedDB open failed"));
+    request.onblocked = () => fail(new Error('IndexedDB open was blocked'));
+    request.onerror = () => fail(request.error ?? new Error('IndexedDB open failed'));
     request.onsuccess = () => {
       const database = request.result;
-      if (settled) {
-        database.close();
-        return;
-      }
+      if (settled) { database.close(); return; }
       database.onversionchange = () => database.close();
       settled = true;
       resolve(database);
@@ -84,177 +91,200 @@ function openDatabase(): Promise<IDBDatabase> {
   });
 }
 
-function transactionError(transaction: IDBTransaction, fallback: string): Error {
-  return transaction.error ?? new Error(fallback);
-}
+function transactionError(transaction: IDBTransaction, fallback: string): Error { return transaction.error ?? new Error(fallback); }
+function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null; }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
+export function emptyGameStats(): GameStats { return { gamesPlayed: 0, wins: 0, losses: 0 }; }
 export function emptyPlayerStats(): PlayerStats {
-  return { gamesPlayed: 0, citizenWins: 0, citizenLosses: 0, impostorWins: 0, impostorLosses: 0 };
+  return { impostor: { ...emptyGameStats(), citizenWins: 0, citizenLosses: 0, impostorWins: 0, impostorLosses: 0 }, bomb: emptyGameStats(), sameWave: emptyGameStats() };
 }
-
-function isCounter(value: unknown): value is number {
-  return Number.isSafeInteger(value) && (value as number) >= 0;
+function isCounter(value: unknown): value is number { return Number.isSafeInteger(value) && (value as number) >= 0; }
+function isGameStats(value: unknown): value is GameStats {
+  return isRecord(value) && isCounter(value.gamesPlayed) && isCounter(value.wins) && isCounter(value.losses) && value.wins + value.losses === value.gamesPlayed;
 }
+function isImpostorStats(value: unknown): value is ImpostorStats {
+  if (!isGameStats(value) || !isRecord(value)) return false;
+  return isCounter(value.citizenWins) && isCounter(value.citizenLosses) && isCounter(value.impostorWins) && isCounter(value.impostorLosses)
+    && value.citizenWins + value.citizenLosses + value.impostorWins + value.impostorLosses === value.gamesPlayed;
+}
+function isPlayerStats(value: unknown): value is PlayerStats { return isRecord(value) && isImpostorStats(value.impostor) && isGameStats(value.bomb) && isGameStats(value.sameWave); }
 
-function isPlayerStats(value: unknown): value is PlayerStats {
+function isLegacyStats(value: unknown): value is Record<string, unknown> {
   if (!isRecord(value)) return false;
-  const counters = [value.gamesPlayed, value.citizenWins, value.citizenLosses, value.impostorWins, value.impostorLosses];
-  return counters.every(isCounter)
-    && (value.citizenWins as number) + (value.citizenLosses as number) + (value.impostorWins as number) + (value.impostorLosses as number) <= (value.gamesPlayed as number);
+  if ('impostor' in value || 'bomb' in value || 'sameWave' in value) return false;
+  const keys = ['gamesPlayed', 'citizenWins', 'citizenLosses', 'impostorWins', 'impostorLosses'];
+  if (!keys.every((key) => isCounter(value[key]))) return false;
+  return (value.citizenWins as number) + (value.citizenLosses as number) + (value.impostorWins as number) + (value.impostorLosses as number) <= (value.gamesPlayed as number);
 }
 
+function legacyStats(value: unknown): PlayerStats {
+  const result = emptyPlayerStats();
+  if (!isRecord(value)) return result;
+  const gamesPlayed = isCounter(value.gamesPlayed) ? value.gamesPlayed : 0;
+  const citizenWins = isCounter(value.citizenWins) ? value.citizenWins : 0;
+  const citizenLosses = isCounter(value.citizenLosses) ? value.citizenLosses : 0;
+  const impostorWins = isCounter(value.impostorWins) ? value.impostorWins : 0;
+  const impostorLosses = isCounter(value.impostorLosses) ? value.impostorLosses : 0;
+  const played = Math.max(gamesPlayed, citizenWins + citizenLosses + impostorWins + impostorLosses);
+  result.impostor = { gamesPlayed: played, wins: citizenWins + impostorWins, losses: citizenLosses + impostorLosses, citizenWins, citizenLosses, impostorWins, impostorLosses };
+  return result;
+}
+function normalizeStats(value: unknown): PlayerStats {
+  if (value === undefined) return emptyPlayerStats();
+  if (isPlayerStats(value)) return structuredClone(value);
+  if (isLegacyStats(value)) return legacyStats(value);
+  throw new Error('Invalid player statistics');
+}
 function isPlayer(value: unknown): value is Record<string, unknown> {
-  if (!isRecord(value)) return false;
-  return typeof value.id === "string"
-    && typeof value.name === "string"
-    && typeof value.avatar === "string"
-    && typeof value.createdAt === "number"
-    && (value.stats === undefined || isPlayerStats(value.stats));
+  return isRecord(value) && typeof value.id === 'string' && typeof value.name === 'string' && typeof value.avatar === 'string' && typeof value.createdAt === 'number' && Number.isSafeInteger(value.createdAt) && value.createdAt >= 0
+    && (value.stats === undefined || isPlayerStats(value.stats) || isLegacyStats(value.stats));
 }
-
+function isPlayerList(value: unknown, minimum: number, maximum: number): value is Record<string, unknown>[] {
+  return Array.isArray(value) && value.length >= minimum && value.length <= maximum && value.every(isPlayer)
+    && new Set(value.map((player) => player.id)).size === value.length;
+}
+function isWordEntry(value: unknown): boolean {
+  return isRecord(value) && typeof value.word === 'string' && typeof value.hint === 'string' && typeof value.wordEn === 'string' && typeof value.hintEn === 'string'
+    && typeof value.category === 'string' && words.some((entry) => entry.word === value.word && entry.hint === value.hint && entry.wordEn === value.wordEn && entry.hintEn === value.hintEn && entry.category === value.category);
+}
+function hasPlayerIds(value: unknown, players: readonly Record<string, unknown>[]): value is string[] {
+  return Array.isArray(value) && value.every((id) => typeof id === 'string') && new Set(value).size === value.length
+    && value.every((id) => players.some((player) => player.id === id));
+}
+function isImpostorGameSnapshot(value: Record<string, unknown>): boolean {
+  const players = value.players;
+  if (!isPlayerList(players, 3, 20) || typeof value.id !== 'string' || !isWordEntry(value.entry)) return false;
+  const playerIds = players.map((player) => player.id as string);
+  const impostorIds = value.impostorIds;
+  return Array.isArray(impostorIds) && impostorIds.length >= 1 && impostorIds.length <= Math.floor((players.length - 1) / 2)
+    && hasPlayerIds(impostorIds, players) && typeof value.phase === 'string' && ['reveal', 'discuss', 'vote', 'result'].includes(value.phase)
+    && isCounter(value.revealIndex) && value.revealIndex < players.length && hasPlayerIds(value.accusedIds, players)
+    && hasPlayerIds(value.eliminatedIds, players) && hasPlayerIds(value.foundImpostorIds, players)
+    && typeof value.starterId === 'string' && playerIds.includes(value.starterId)
+    && (value.scoreRecorded === undefined || typeof value.scoreRecorded === 'boolean')
+    && isCounter(value.attemptsUsed) && value.attemptsUsed <= Math.max(1, players.length)
+    && isCounter(value.maxAttempts) && value.maxAttempts >= 1 && value.maxAttempts <= players.length
+    && (value.lastVoteWasImpostor === undefined || value.lastVoteWasImpostor === null || typeof value.lastVoteWasImpostor === 'boolean');
+}
+function isBombGameSnapshot(value: Record<string, unknown>): boolean {
+  const players = value.players;
+  if (!isPlayerList(players, 2, 20) || typeof value.id !== 'string' || !isRecord(value.prompt)) return false;
+  const prompt = value.prompt;
+  const knownPrompt = BOMB_PROMPTS.some((candidate) => candidate.id === prompt.id && prompt.category === candidate.category && prompt.topic === candidate.topic && prompt.topicEn === candidate.topicEn
+    && Array.isArray(prompt.examples) && Array.isArray(prompt.examplesEn) && prompt.examples.length === candidate.examples.length && prompt.examplesEn.length === candidate.examplesEn.length
+    && prompt.examples.every((example, index) => example === candidate.examples[index]) && prompt.examplesEn.every((example, index) => example === candidate.examplesEn[index]));
+  const playerIds = players.map((player) => player.id as string);
+  const winnerIds = value.winnerIds;
+  const loserId = value.loserId;
+  if (!hasPlayerIds(winnerIds, players)) return false;
+  const validWinnerIds = winnerIds as string[];
+  return knownPrompt && isCounter(value.startedAt) && isCounter(value.deadlineAt) && value.deadlineAt > value.startedAt
+    && value.deadlineAt - value.startedAt >= 20_000 && value.deadlineAt - value.startedAt <= 45_000
+    && typeof value.phase === 'string' && ['playing', 'assigning', 'result'].includes(value.phase)
+    && (loserId === null || (typeof loserId === 'string' && playerIds.includes(loserId)))
+    && (value.scoreRecorded === undefined || typeof value.scoreRecorded === 'boolean')
+    && (value.phase !== 'result' ? loserId === null && validWinnerIds.length === 0 : typeof loserId === 'string' && validWinnerIds.length === players.length - 1 && playerIds.filter((id) => id !== loserId).every((id) => validWinnerIds.includes(id)));
+}
+function isSameWaveGameSnapshot(value: Record<string, unknown>): boolean {
+  const players = value.players;
+  if (!isPlayerList(players, 3, 20) || typeof value.id !== 'string' || !isRecord(value.prompt)) return false;
+  const prompt = value.prompt;
+  const knownPrompt = SAME_WAVE_PROMPTS.some((candidate) => candidate.id === prompt.id && prompt.prompt === candidate.prompt && prompt.promptEn === candidate.promptEn
+    && Array.isArray(prompt.options) && Array.isArray(prompt.optionsEn) && prompt.options.length === 4 && prompt.optionsEn.length === 4
+    && prompt.options.every((option, index) => option === candidate.options[index]) && prompt.optionsEn.every((option, index) => option === candidate.optionsEn[index]));
+  if (!knownPrompt || !isCounter(value.currentPlayerIndex) || value.currentPlayerIndex > players.length || !isRecord(value.picks) || !hasPlayerIds(value.winnerIds, players)) return false;
+  const playerIds = new Set(players.map((player) => player.id));
+  const picks = Object.entries(value.picks);
+  return picks.every(([id, choice]) => playerIds.has(id) && typeof choice === 'string' && /^[0-3]$/.test(choice))
+    && typeof value.phase === 'string' && ['picking', 'result'].includes(value.phase)
+    && (value.scoreRecorded === undefined || typeof value.scoreRecorded === 'boolean')
+    && (value.phase === 'picking' ? value.winnerIds.length === 0 && value.currentPlayerIndex < players.length : picks.length === players.length);
+}
 function isActiveGame(value: unknown): boolean {
-  return value === null || isRecord(value);
-}
-
-function isSnapshot<T>(value: unknown): value is AppData<T> {
+  if (value === null) return true;
   if (!isRecord(value)) return false;
-  if (!Array.isArray(value.players) || !value.players.every(isPlayer)) return false;
-  if (!Array.isArray(value.selectedIds) || !value.selectedIds.every((id) => typeof id === "string")) return false;
-  if (!isRecord(value.settings)) return false;
-  const impostors = typeof value.settings.impostors === "number" ? value.settings.impostors : 1;
-  const minAllowedAttempts = Math.max(1, impostors);
-  const maxAllowedAttempts = Math.max(1, value.selectedIds.length);
-  const maxAllowedImpostors = Math.max(1, Math.floor((value.selectedIds.length - 1) / 2));
-  return Number.isInteger(value.settings.impostors)
-    && impostors >= 1
-    && impostors <= maxAllowedImpostors
-    && (value.settings.maxAttempts === undefined || (isCounter(value.settings.maxAttempts) && value.settings.maxAttempts >= 1 && value.settings.maxAttempts <= maxAllowedAttempts))
-    && isCategorySelection(value.settings.category)
-    && (value.language === "it" || value.language === "en")
-    && isActiveGame(value.activeGame);
+  if (value.gameId === undefined || value.gameId === 'impostor') return isImpostorGameSnapshot(value);
+  if (value.gameId === 'bomb') return isBombGameSnapshot(value);
+  if (value.gameId === 'same-wave') return isSameWaveGameSnapshot(value);
+  return false;
 }
-
-function validateSnapshot<T>(data: AppData<T>): AppData<T> {
-  if (!isSnapshot<T>(data)) throw new Error("Invalid snapshot");
-  const cloned = structuredClone(data);
-  const minimumAttempts = Math.max(1, cloned.settings.impostors);
-  const maximumAttempts = Math.max(1, cloned.selectedIds.length);
-  const configuredAttempts = cloned.settings.maxAttempts ?? minimumAttempts;
-  return {
-    ...cloned,
-    settings: {
-      ...cloned.settings,
-      maxAttempts: Math.max(minimumAttempts, Math.min(maximumAttempts, configuredAttempts)),
-    },
-    players: cloned.players.map((player) => ({
-      ...player,
-      stats: player.stats ?? emptyPlayerStats(),
-    })),
+function isBombCategory(value: unknown): value is string {
+  return value === 'all' || (typeof value === 'string' && BOMB_CATEGORY_IDS.includes(value as typeof BOMB_CATEGORY_IDS[number]));
+}
+function isSettingsByGame(value: unknown, selectedCount: number): value is SettingsByGame {
+  if (!isRecord(value) || !isRecord(value.impostor) || !isRecord(value.bomb) || !isRecord(value.sameWave)) return false;
+  const settings = value.impostor;
+  const impostors = settings.impostors;
+  const maxAllowedImpostors = Math.max(1, Math.floor((selectedCount - 1) / 2));
+  return Number.isInteger(impostors) && (impostors as number) >= 1 && (impostors as number) <= maxAllowedImpostors
+    && (settings.maxAttempts === undefined || (isCounter(settings.maxAttempts) && settings.maxAttempts >= Math.max(1, impostors as number) && settings.maxAttempts <= Math.max(1, selectedCount)))
+    && isCategorySelection(settings.category) && isBombCategory(value.bomb.category) && value.sameWave.category === 'all';
+}
+function isSnapshot<T>(value: unknown): value is AppData<T> {
+  if (!isRecord(value) || !Array.isArray(value.players) || !value.players.every(isPlayer) || !Array.isArray(value.selectedIds) || !value.selectedIds.every((id) => typeof id === 'string')) return false;
+  const playerIds = new Set(value.players.map((player) => (player as Record<string, unknown>).id));
+  if (new Set(value.players.map((player) => (player as Record<string, unknown>).id)).size !== value.players.length
+    || new Set(value.selectedIds).size !== value.selectedIds.length || !value.selectedIds.every((id) => playerIds.has(id))) return false;
+  if (value.language !== 'it' && value.language !== 'en') return false;
+  if (!isActiveGame(value.activeGame)) return false;
+  if (value.selectedGameId !== undefined && value.selectedGameId !== 'impostor' && value.selectedGameId !== 'bomb' && value.selectedGameId !== 'same-wave') return false;
+  if (isSettingsByGame(value.settings, value.selectedIds.length)) return true;
+  const settings = value.settings;
+  if (isRecord(settings) && ('impostor' in settings || 'bomb' in settings || 'sameWave' in settings)) return false;
+  return isRecord(settings) && Number.isInteger(settings.impostors) && (settings.impostors as number) >= 1
+    && (settings.impostors as number) <= Math.max(1, Math.floor((value.selectedIds.length - 1) / 2))
+    && (settings.maxAttempts === undefined || (isCounter(settings.maxAttempts) && settings.maxAttempts >= 1 && settings.maxAttempts <= Math.max(1, value.selectedIds.length)))
+    && isCategorySelection(settings.category);
+}
+function normalizeActiveGame<T>(value: T | null): T | null { return !isRecord(value) || value.gameId !== undefined ? value : { ...value, gameId: 'impostor' } as T; }
+function normalizeSnapshot<T>(stored: unknown): AppData<T> {
+  if (!isSnapshot<T>(stored)) throw new Error('Invalid snapshot');
+  const source = stored as unknown as Record<string, unknown>;
+  const legacySettings = !isSettingsByGame(source.settings, (source.selectedIds as string[]).length);
+  const old = source.settings as Record<string, unknown>;
+  const impostor: GameSettings = legacySettings ? { impostors: old.impostors as number, maxAttempts: isCounter(old.maxAttempts) ? old.maxAttempts : Math.max(1, old.impostors as number), category: old.category as CategorySelection } : structuredClone((source.settings as SettingsByGame).impostor);
+  const minimumAttempts = Math.max(1, impostor.impostors);
+  const maximumAttempts = Math.max(1, (source.selectedIds as string[]).length);
+  const settings: SettingsByGame = {
+    impostor: { ...impostor, maxAttempts: Math.max(minimumAttempts, Math.min(maximumAttempts, impostor.maxAttempts)) },
+    bomb: legacySettings ? { category: 'all' } : structuredClone((source.settings as SettingsByGame).bomb),
+    sameWave: legacySettings ? { category: 'all' } : structuredClone((source.settings as SettingsByGame).sameWave),
   };
+  const players = (source.players as Record<string, unknown>[]).map((player) => ({ ...player, stats: normalizeStats(player.stats) })) as Player[];
+  return { players, selectedIds: [...(source.selectedIds as string[])], selectedGameId: (source.selectedGameId as GameId | undefined) ?? 'impostor', settings, language: source.language as Locale, activeGame: normalizeActiveGame(source.activeGame as T | null) };
 }
-
 function deleteSnapshot(): Promise<void> {
   return openDatabase().then((database) => new Promise<void>((resolve, reject) => {
-    const transaction = database.transaction(STORE_NAME, "readwrite");
+    const transaction = database.transaction(STORE_NAME, 'readwrite');
     transaction.oncomplete = () => { database.close(); resolve(); };
-    transaction.onerror = () => { database.close(); reject(transactionError(transaction, "IndexedDB delete transaction failed")); };
-    transaction.onabort = () => { database.close(); reject(transactionError(transaction, "IndexedDB delete transaction aborted")); };
+    transaction.onerror = () => { database.close(); reject(transactionError(transaction, 'IndexedDB delete transaction failed')); };
+    transaction.onabort = () => { database.close(); reject(transactionError(transaction, 'IndexedDB delete transaction aborted')); };
     transaction.objectStore(STORE_NAME).delete(SNAPSHOT_KEY);
   }));
 }
-
 export function loadData<T>(): Promise<AppData<T> | null> {
-  return openDatabase().then(
-    (database) =>
-      new Promise<AppData<T> | null>((resolve, reject) => {
-        let snapshot: AppData<T> | null = null;
-        let invalid = false;
-
-        let transaction: IDBTransaction;
-        try {
-          transaction = database.transaction(STORE_NAME, "readonly");
-        } catch (error) {
-          database.close();
-          reject(error);
-          return;
-        }
-
-        const store = transaction.objectStore(STORE_NAME);
-        const request = store.get(SNAPSHOT_KEY);
-        request.onsuccess = () => {
-          const stored = (request.result as AppData<T> | undefined) ?? null;
-          if (!stored) return;
-          try {
-            snapshot = validateSnapshot(stored);
-          } catch {
-            invalid = true;
-          }
-        };
-        request.onerror = () => reject(request.error ?? new Error("IndexedDB read failed"));
-        transaction.oncomplete = () => {
-          database.close();
-          if (invalid) {
-            deleteSnapshot().then(() => resolve(null), reject);
-          } else {
-            resolve(snapshot);
-          }
-        };
-        transaction.onerror = () => {
-          database.close();
-          reject(transactionError(transaction, "IndexedDB read transaction failed"));
-        };
-        transaction.onabort = () => {
-          database.close();
-          reject(transactionError(transaction, "IndexedDB read transaction aborted"));
-        };
-      }),
-  );
+  return openDatabase().then((database) => new Promise<AppData<T> | null>((resolve, reject) => {
+    let snapshot: AppData<T> | null = null;
+    let invalid = false;
+    let transaction: IDBTransaction;
+    try { transaction = database.transaction(STORE_NAME, 'readonly'); } catch (error) { database.close(); reject(error); return; }
+    const request = transaction.objectStore(STORE_NAME).get(SNAPSHOT_KEY);
+    request.onsuccess = () => { const stored = request.result as unknown; if (!stored) return; try { snapshot = normalizeSnapshot<T>(stored); } catch { invalid = true; } };
+    request.onerror = () => reject(request.error ?? new Error('IndexedDB read failed'));
+    transaction.oncomplete = () => { database.close(); if (invalid) deleteSnapshot().then(() => resolve(null), reject); else resolve(snapshot); };
+    transaction.onerror = () => { database.close(); reject(transactionError(transaction, 'IndexedDB read transaction failed')); };
+    transaction.onabort = () => { database.close(); reject(transactionError(transaction, 'IndexedDB read transaction aborted')); };
+  }));
 }
-
 export function saveData<T>(data: AppData<T>): Promise<void> {
-  return openDatabase().then(
-    (database) =>
-      new Promise<void>((resolve, reject) => {
-        let transaction: IDBTransaction;
-        try {
-          transaction = database.transaction(STORE_NAME, "readwrite");
-        } catch (error) {
-          database.close();
-          reject(error);
-          return;
-        }
-
-        transaction.oncomplete = () => {
-          database.close();
-          resolve();
-        };
-        transaction.onerror = () => {
-          database.close();
-          reject(transactionError(transaction, "IndexedDB write transaction failed"));
-        };
-        transaction.onabort = () => {
-          database.close();
-          reject(transactionError(transaction, "IndexedDB write transaction aborted"));
-        };
-
-        let request: IDBRequest;
-        try {
-          request = transaction.objectStore(STORE_NAME).put(data, SNAPSHOT_KEY);
-        } catch (error) {
-          // DataCloneError is thrown synchronously; abort so the prior snapshot remains intact.
-          try {
-            transaction.abort();
-          } catch {
-            database.close();
-          }
-          reject(error);
-          return;
-        }
-        request.onerror = () => reject(request.error ?? new Error("IndexedDB write failed"));
-      }),
-  );
+  return openDatabase().then((database) => new Promise<void>((resolve, reject) => {
+    let transaction: IDBTransaction;
+    try { transaction = database.transaction(STORE_NAME, 'readwrite'); } catch (error) { database.close(); reject(error); return; }
+    transaction.oncomplete = () => { database.close(); resolve(); };
+    transaction.onerror = () => { database.close(); reject(transactionError(transaction, 'IndexedDB write transaction failed')); };
+    transaction.onabort = () => { database.close(); reject(transactionError(transaction, 'IndexedDB write transaction aborted')); };
+    let request: IDBRequest;
+    try { request = transaction.objectStore(STORE_NAME).put(data, SNAPSHOT_KEY); } catch (error) { try { transaction.abort(); } catch { database.close(); } reject(error); return; }
+    request.onerror = () => reject(request.error ?? new Error('IndexedDB write failed'));
+  }));
 }

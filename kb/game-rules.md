@@ -30,10 +30,10 @@ From the result screen, the group can start a rematch while keeping players and 
 ## Bomba
 
 1. Select 2–20 players and one topic category or all categories.
-2. App chooses one bilingual topic and hidden random deadline between 20 and 45 seconds.
-3. Current player says valid unused answer aloud, taps `Detto`, and passes phone.
-4. Group resolves validity and duplicates; app only counts passes and changes holder.
-5. When timer expires, current holder loses and every other player wins.
+2. App chooses one bilingual topic and starts a random timer between 20 and 45 seconds.
+3. Players say valid unused answers aloud and manage turns themselves; app shows only bomb/timer and topic.
+4. Group resolves validity and duplicates without microphone or app controls.
+5. When timer expires, group selects player caught by explosion. Selected player receives loss/negative point; every other player wins.
 
 ## Stessa Onda
 

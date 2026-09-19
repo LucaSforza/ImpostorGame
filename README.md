@@ -1,31 +1,37 @@
-# Impostor
+# Pocket Circle
 
-Trust no one.
+One phone. Your circle. Zero tracking.
 
-Impostor is a local-first party game for 3–20 players sharing one phone. Crew members receive a secret word; impostors receive only a related hint. Talk, bluff, and find the impostors before they blend in.
+Pocket Circle is a private, local-first catalog of party games for friends sharing one phone. Profiles, active games, and statistics stay in the browser. No accounts, ads, analytics, or gameplay network calls.
 
 Play the live version at [lucasforza.github.io/ImpostorGame](https://lucasforza.github.io/ImpostorGame/).
+
+## Games
+
+- **Impostore** — receive a secret word, bluff, discuss, and find the hidden impostors.
+- **Bomba** — name valid words for a topic until the shared timer explodes, then decide together who receives the loss.
+- **Stessa Onda** — answer private social prompts and discover who thinks alike.
 
 ## Features
 
 - Italian and English interface and word deck.
-- 300 bilingual words across 15 categories, including youth slang, dating, trends, parties, film, and hobbies.
+- Three bilingual games with large built-in offline content catalogs.
+- 300 Impostore words across 15 categories, including youth slang, dating, trends, parties, film, and hobbies.
 - Visual category picker with single- or multi-category games.
 - 3–20 players with configurable impostor count.
 - Saved player profiles with illustrated avatars or device photos.
-- Private role reveal, discussion, collective vote, results, and rematches.
-- IndexedDB persistence for players, settings, and an active game.
+- Shared saved player profiles across every game.
+- Separate statistics page with overall and per-game results for every player.
+- IndexedDB persistence for players, per-game settings, statistics, and active session.
 - Mobile-first layout with `prefers-reduced-motion` support.
 - No backend, accounts, analytics, or game-time API calls.
 
 ## How to play
 
-1. Add 3–20 players and select the players for the round.
-2. Choose the number of impostors and one or more word categories, or use the full deck.
-3. Pass the phone around. Crew members see the secret word; impostors see its hint.
-4. Take turns saying a word related to the secret without saying the secret itself.
-5. Vote together for exactly as many suspects as there are impostors.
-6. The crew wins only if every impostor is accused and no innocent player is selected.
+1. Pick a game from the catalog.
+2. Add or select saved friends; same profiles work in every game.
+3. Configure that game, then pass one phone around.
+4. Finish a round and review player statistics from the dedicated panel.
 
 ## Development
 
@@ -38,17 +44,18 @@ npm test
 npm run build
 ```
 
-`npm run dev` starts the Vite development server. `npm test` runs the Vitest suite. `npm run build` type-checks and creates the production build in `dist/`.
+`npm run dev` starts Vite. `npm test` runs Vitest. `npm run build` type-checks and creates `dist/`.
+All automated tests live in the dedicated `tests/` directory.
 
 ## Deployment
 
 The GitHub Actions workflow in `.github/workflows/deploy.yml` runs tests and builds `dist/` on every push to `main`, then deploys it to GitHub Pages.
 
-The repository's Pages source must be set to **GitHub Actions**. Vite uses `/ImpostorGame/` as its base path.
+Repository Pages source must be **GitHub Actions**. Vite keeps `/ImpostorGame/` as base path until repository is renamed.
 
 ## Data and privacy
 
-The app is a static client. Players, settings, photos, and any active game stay in IndexedDB on the current browser and origin. Once the app has loaded, the game runs without network calls.
+App is a static client. Players, settings, photos, statistics, and active session stay in IndexedDB on current browser and origin. Once loaded, every game runs without network calls.
 
 Data is not shared between `localhost` and GitHub Pages. Clearing site data removes saved players and games. Use one game tab per device.
 
@@ -58,6 +65,7 @@ See the [knowledge base](kb/README.md) for:
 
 - [Architecture](kb/architecture.md)
 - [IndexedDB model](kb/indexeddb.md)
+- [Catalog design](kb/catalog-design.md)
 - [Game rules](kb/game-rules.md)
 - [Language and localization](kb/language.md)
 

@@ -39,6 +39,7 @@ classDiagram
   }
   class GameSettings {
     +number impostors
+    +number maxAttempts
     +CategorySelection category
   }
   class Game {
@@ -51,6 +52,8 @@ classDiagram
     +string[] accusedIds
     +string starterId
     +boolean scoreRecorded
+    +number attemptsUsed
+    +number maxAttempts
   }
   class WordEntry {
     +string word
@@ -67,9 +70,9 @@ classDiagram
   Game "1" *-- "1" WordEntry : entry
 ```
 
-`AppData<Game>` is the complete snapshot written under the `current` key. `activeGame` may be `null`; when it contains a game, it allows the game to resume after a reload. `PlayerStats` stores games played plus wins/losses by role. Total wins, losses, role totals, and win percentage are derived for display. `Game.scoreRecorded` prevents a result from being counted twice after re-renders, reloads, or edits. `Game` has no locale field: the current `AppData.language` localizes its bilingual `WordEntry` at render time. The temporary flag that indicates whether a card is exposed is not part of this model and is not persisted.
+`AppData<Game>` is the complete snapshot written under the `current` key. `activeGame` may be `null`; when it contains a game, it allows the game to resume after a reload. `GameSettings.maxAttempts` configures full voting attempts. It is constrained to 1 through `players - impostors`; `Game.attemptsUsed` tracks completed votes and `Game.maxAttempts` snapshots the setting for the active round. `PlayerStats` stores games played plus wins/losses by role. Total wins, losses, role totals, and win percentage are derived for display. `Game.scoreRecorded` prevents a result from being counted twice after re-renders, reloads, or edits. `Game` has no locale field: the current `AppData.language` localizes its bilingual `WordEntry` at render time. The temporary flag that indicates whether a card is exposed is not part of this model and is not persisted.
 
-`loadData()` validates the current snapshot shape on read. Existing players without `stats` are accepted and normalized to zero counters; new writes always include the complete stats object. Invalid snapshots, including old category-label values, invalid category arrays, or malformed stats, are deleted and treated as absent. No IndexedDB version bump is needed because the stored value is a single application snapshot and compatibility normalization happens at the snapshot boundary.
+`loadData()` validates the current snapshot shape on read. Existing players without `stats` are accepted and normalized to zero counters; existing settings without `maxAttempts` receive the maximum valid value for their saved selection. New writes always include complete stats and attempt settings. Invalid snapshots, including old category-label values, invalid category arrays, malformed stats, or out-of-range attempt settings, are deleted and treated as absent. No IndexedDB version bump is needed because the stored value is a single application snapshot and compatibility normalization happens at the snapshot boundary.
 
 ## Data scope
 

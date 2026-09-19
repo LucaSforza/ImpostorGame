@@ -19,6 +19,7 @@ export interface Player {
 
 export interface GameSettings {
   impostors: number;
+  maxAttempts: number;
   category: CategorySelection;
 }
 
@@ -124,7 +125,9 @@ function isSnapshot<T>(value: unknown): value is AppData<T> {
   if (!Array.isArray(value.players) || !value.players.every(isPlayer)) return false;
   if (!Array.isArray(value.selectedIds) || !value.selectedIds.every((id) => typeof id === "string")) return false;
   if (!isRecord(value.settings)) return false;
+  const maxAllowedAttempts = Math.max(1, value.selectedIds.length - (typeof value.settings.impostors === "number" ? value.settings.impostors : 1));
   return Number.isInteger(value.settings.impostors)
+    && (value.settings.maxAttempts === undefined || (isCounter(value.settings.maxAttempts) && value.settings.maxAttempts >= 1 && value.settings.maxAttempts <= maxAllowedAttempts))
     && isCategorySelection(value.settings.category)
     && (value.language === "it" || value.language === "en")
     && isActiveGame(value.activeGame);
@@ -135,6 +138,10 @@ function validateSnapshot<T>(data: AppData<T>): AppData<T> {
   const cloned = structuredClone(data);
   return {
     ...cloned,
+    settings: {
+      ...cloned.settings,
+      maxAttempts: cloned.settings.maxAttempts ?? Math.max(1, cloned.selectedIds.length - cloned.settings.impostors),
+    },
     players: cloned.players.map((player) => ({
       ...player,
       stats: player.stats ?? emptyPlayerStats(),

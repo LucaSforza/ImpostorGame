@@ -4,7 +4,8 @@
 
 1. Select 3 to 20 players saved on the device.
 2. Choose 1 to `floor((players - 1) / 2)` impostors; impostors are always fewer than half of the group.
-3. Choose one or more categories, or all categories.
+3. Choose 1 to `players - impostors` maximum voting attempts. This is the number of non-impostors: more attempts would allow a configuration with no meaningful limit.
+4. Choose one or more categories, or all categories.
 
 The game randomly selects a `WordEntry`, assigns roles without repeating the previous word when starting a rematch, and chooses a player to break the ice.
 
@@ -18,7 +19,7 @@ The word, hint, interface, and category labels follow the current interface lang
 
 During discussion, each player takes a turn saying a word related to the secret without saying the secret itself. Players can ask questions and repeat the round. When the group is ready, move to the vote.
 
-The vote is collective: the group selects exactly as many suspects as there are impostors. The crew wins only when every impostor is among the accused and no innocent player is accused. In every other case, the impostors win. The result shows the word, the impostors, and the accused players.
+The vote is collective: each attempt selects exactly as many suspects as there are impostors. The crew wins only when every impostor is among the accused and no innocent player is accused. A failed attempt consumes one try and returns the group to discussion when attempts remain. After the final failed attempt, impostors win. The result shows the word, the impostors, and the accused players.
 
 From the result screen, the group can start a rematch while keeping players and settings; the home screen allows players and rules to be changed. The active game is saved locally so it can be restored after a reload.
 

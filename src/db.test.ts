@@ -22,7 +22,7 @@ describe("local game snapshot", () => {
     const data: AppData<{ round: number }> = {
       players: [{ id: "p1", name: "Ada", avatar: "fox", createdAt: 123, stats: { gamesPlayed: 2, citizenWins: 1, citizenLosses: 1, impostorWins: 0, impostorLosses: 0 } }],
       selectedIds: ["p1"],
-      settings: { impostors: 1, category: "animals" },
+      settings: { impostors: 1, maxAttempts: 1, category: "animals" },
       language: "it",
       activeGame: { round: 2 },
     };
@@ -38,11 +38,11 @@ describe("local game snapshot", () => {
     const first: AppData<null> = {
       players: [],
       selectedIds: [],
-      settings: { impostors: 1, category: "all" },
+      settings: { impostors: 1, maxAttempts: 1, category: "all" },
       language: "en",
       activeGame: null,
     };
-    const second: AppData<null> = { ...first, settings: { impostors: 2, category: "food" } };
+    const second: AppData<null> = { ...first, settings: { impostors: 2, maxAttempts: 1, category: "food" } };
 
     await saveData(first);
     await saveData(second);
@@ -54,7 +54,7 @@ describe("local game snapshot", () => {
     const existing: AppData<null> = {
       players: [],
       selectedIds: [],
-      settings: { impostors: 1, category: "animals" },
+      settings: { impostors: 1, maxAttempts: 1, category: "animals" },
       language: "en",
       activeGame: null,
     };
@@ -97,6 +97,20 @@ describe("local game snapshot", () => {
     await expect(loadData()).resolves.toBeNull();
   });
 
+  it("discards snapshots with an out-of-range attempt limit", async () => {
+    const invalid = {
+      players: [],
+      selectedIds: [],
+      settings: { impostors: 1, maxAttempts: 2, category: "all" },
+      language: "en",
+      activeGame: null,
+    } as unknown as AppData<null>;
+
+    await saveData(invalid);
+
+    await expect(loadData()).resolves.toBeNull();
+  });
+
   it("normalizes players from snapshots created before statistics", async () => {
     const legacy = {
       players: [{ id: "p1", name: "Ada", avatar: "fox", createdAt: 123 }],
@@ -110,6 +124,7 @@ describe("local game snapshot", () => {
 
     await expect(loadData()).resolves.toEqual({
       ...legacy,
+      settings: { ...legacy.settings, maxAttempts: 1 },
       players: [{ ...legacy.players[0], stats: { gamesPlayed: 0, citizenWins: 0, citizenLosses: 0, impostorWins: 0, impostorLosses: 0 } }],
     });
   });

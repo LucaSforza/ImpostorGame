@@ -14,7 +14,7 @@ function makePlayers(count: number): Player[] {
 }
 
 function makeSettings(impostors: number, category: CategorySelection = "all") {
-  return { impostors, category };
+  return { impostors, maxAttempts: 1, category };
 }
 
 describe("createGame", () => {
@@ -44,6 +44,11 @@ describe("createGame", () => {
     players[2].id = players[0].id;
 
     expect(() => createGame(players, makeSettings(1))).toThrow("Invalid player count");
+  });
+
+  it("rejects attempt limits above the number of citizens", () => {
+    expect(() => createGame(makePlayers(5), { ...makeSettings(2), maxAttempts: 4 })).toThrow("Invalid attempt count");
+    expect(createGame(makePlayers(5), { ...makeSettings(2), maxAttempts: 3 }).maxAttempts).toBe(3);
   });
 
   it("rejects categories without words", () => {

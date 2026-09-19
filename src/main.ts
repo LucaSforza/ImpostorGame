@@ -23,6 +23,7 @@ const avatar = (p: Player, size = '') => `<span class="avatar ${size}" aria-hidd
 async function change(update: (next: AppData<Game>) => void): Promise<void> {
   if (busy || !storageReady) return;
   busy = true;
+  root.querySelectorAll<HTMLButtonElement | HTMLSelectElement>('button, select').forEach(control => { control.disabled = true; });
   const next = structuredClone(data);
   try {
     update(next);

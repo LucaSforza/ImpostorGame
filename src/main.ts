@@ -2,13 +2,29 @@ import './style.css';
 import { loadData, saveData, type AppData, type Player } from './db';
 import { createGame, maxImpostors, citizensWin, type Game } from './game';
 import { categories } from './words';
+import avatar01 from './assets/avatars/avatar-01.webp';
+import avatar02 from './assets/avatars/avatar-02.webp';
+import avatar03 from './assets/avatars/avatar-03.webp';
+import avatar04 from './assets/avatars/avatar-04.webp';
+import avatar05 from './assets/avatars/avatar-05.webp';
+import avatar06 from './assets/avatars/avatar-06.webp';
+import avatar07 from './assets/avatars/avatar-07.webp';
+import avatar08 from './assets/avatars/avatar-08.webp';
+import avatar09 from './assets/avatars/avatar-09.webp';
+import avatar10 from './assets/avatars/avatar-10.webp';
+import avatar11 from './assets/avatars/avatar-11.webp';
+import avatar12 from './assets/avatars/avatar-12.webp';
+import avatar13 from './assets/avatars/avatar-13.webp';
+import avatar14 from './assets/avatars/avatar-14.webp';
+import avatar15 from './assets/avatars/avatar-15.webp';
+import avatar16 from './assets/avatars/avatar-16.webp';
 
 const root = document.querySelector<HTMLDivElement>('#app')!;
 const avatars = [
-  ['avatar-01', 'Cometa'], ['avatar-02', 'Ribelle'], ['avatar-03', 'Lampo'], ['avatar-04', 'Nebbia'],
-  ['avatar-05', 'Braciere'], ['avatar-06', 'Marea'], ['avatar-07', 'Cobalto'], ['avatar-08', 'Corallo'],
-  ['avatar-09', 'Guscio'], ['avatar-10', 'Piuma'], ['avatar-11', 'Ombra'], ['avatar-12', 'Pixel'],
-  ['avatar-13', 'Zefiro'], ['avatar-14', 'Radice'], ['avatar-15', 'Prisma'], ['avatar-16', 'Turbine'],
+  ['avatar-01', 'Cometa', avatar01], ['avatar-02', 'Ribelle', avatar02], ['avatar-03', 'Lampo', avatar03], ['avatar-04', 'Nebbia', avatar04],
+  ['avatar-05', 'Braciere', avatar05], ['avatar-06', 'Marea', avatar06], ['avatar-07', 'Cobalto', avatar07], ['avatar-08', 'Corallo', avatar08],
+  ['avatar-09', 'Guscio', avatar09], ['avatar-10', 'Piuma', avatar10], ['avatar-11', 'Ombra', avatar11], ['avatar-12', 'Pixel', avatar12],
+  ['avatar-13', 'Zefiro', avatar13], ['avatar-14', 'Radice', avatar14], ['avatar-15', 'Prisma', avatar15], ['avatar-16', 'Turbine', avatar16],
 ] as const;
 type AvatarId = typeof avatars[number][0];
 const legacyAvatarMap: Record<string, AvatarId> = {
@@ -22,21 +38,27 @@ let busy = false;
 let storageReady = false;
 let error = '';
 let dialog: 'player' | 'rules' | 'exit' | 'delete' | null = null;
-let chosenAvatar: AvatarId = avatars[0][0];
+let chosenAvatar: string = avatars[0][0];
 let draftName = '';
 let editingPlayerId: string | null = null;
 let deletingPlayerId: string | null = null;
+let photoError = '';
 const t = (it: string, en: string) => data.language === 'it' ? it : en;
 const escape = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 const categoryName = (c: string) => ({ all: t('Tutte le categorie', 'All categories'), Cibo: t('Cibo', 'Food'), Luoghi: t('Luoghi', 'Places'), Oggetti: t('Oggetti', 'Objects'), Animali: t('Animali', 'Animals'), Sport: 'Sport', Cinema: t('Cinema', 'Movies') }[c] ?? c);
 const selected = () => data.players.filter(p => data.selectedIds.includes(p.id));
 const button = (action: string, label: string, cls = 'primary', disabled = false, ariaLabel = '') => `<button class="${cls}" data-action="${action}" ${ariaLabel ? `aria-label="${escape(ariaLabel)}"` : ''} ${disabled || busy ? 'disabled' : ''}>${label}</button>`;
 const resolveAvatar = (value: string): AvatarId => avatars.find(([id]) => id === value)?.[0] ?? legacyAvatarMap[value] ?? avatars[0][0];
-const avatar = (p: Player, size = '') => {
-  const id = resolveAvatar(p.avatar);
-  const index = avatars.findIndex(([avatarId]) => avatarId === id);
-  const position = `${(index % 4) * 100 / 3}% ${Math.floor(index / 4) * 100 / 3}%`;
-  return `<span class="avatar ${size}" style="--avatar-position:${position}" aria-hidden="true"></span>`;
+const isPhotoAvatar = (value: string) => value.startsWith('data:image/');
+const avatarSource = (value: string) => avatars.find(([id]) => id === resolveAvatar(value))![2];
+const avatarMarkup = (value: string, size = '') => {
+  const photo = isPhotoAvatar(value);
+  return `<span class="avatar ${size}${photo ? ' photo' : ''}" aria-hidden="true"><img class="avatar-image" src="${escape(photo ? value : avatarSource(value))}" alt=""/></span>`;
+};
+const avatar = (p: Player, size = '') => avatarMarkup(p.avatar, size);
+const avatarArt = (value: string) => {
+  const photo = isPhotoAvatar(value);
+  return `<img class="character-art${photo ? ' photo' : ''}" src="${escape(photo ? value : avatarSource(value))}" alt=""/>`;
 };
 
 function playerCard(p: Player): string {
@@ -80,7 +102,7 @@ function gameView(g: Game): string {
   const top = `<div class="round-top">${button('exit', '←', 'icon-btn')}<span class="eyebrow">${phaseLabel}</span><span class="count">${g.players.length} ${t('amici', 'friends')}</span></div>`;
   if (g.phase === 'reveal') {
     const impostor = g.impostorIds.includes(p.id);
-    return `<div class="game-logo"><span>${t("TROVA L’", "FIND THE")}</span><strong>${t("IMPOSTORE", "IMPOSTOR")}</strong></div>${top}<div class="progress" aria-label="${g.revealIndex + 1}/${g.players.length}">${g.players.map((_, i) => `<i class="${i <= g.revealIndex ? 'done' : ''}"></i>`).join('')}</div><section class="game-screen"><p class="eyebrow">${t('PASSA IL TELEFONO A', 'PASS THE PHONE TO')}</p><h1 class="player-title">${escape(p.name)}</h1><p class="helper">${t('Gli altri guardano altrove. Niente sbirciate.', 'Everyone else looks away. No peeking.')}</p><div id="secret-card" class="secret-card ${revealed ? 'flipped' : ''}">${revealed ? `<span class="role-label">${impostor ? t('SEI UN IMPOSTORE', 'YOU ARE AN IMPOSTOR') : t('SEI DELLA CREW', 'YOU ARE CREW')}</span><span class="secret-icon">${impostor ? '🕵️' : '🤫'}</span><p>${impostor ? t('Il tuo indizio è', 'Your hint is') : t('La parola segreta è', 'The secret word is')}</p><h2 class="secret-word">${escape(impostor ? hint : gameWord)}</h2><p class="helper">${impostor ? t('Mimetizzati. Ascolta. Inventati qualcosa.', 'Blend in. Listen. Make something up.') : t('Fatti capire, senza dire troppo.', 'Be clear, without giving too much away.')}</p>` : `<div class="character-art" aria-hidden="true"></div>${avatar(p, 'character-badge')}<div class="swipe-prompt"><span>↑</span><b>${t('Scorri su per scoprire', 'Swipe up to reveal')}</b><small>${t('oppure usa il pulsante qui sotto', 'or use the button below')}</small></div>`}</div>${revealed ? button('next', `${t('Nascondi e passa', 'Hide and pass')} <span>→</span>`) : button('reveal', `${t('Sono', "I'm")} ${escape(p.name)} · ${t('Mostra', 'Reveal')} <span>◈</span>`)}<p class="footnote">${g.revealIndex + 1} ${t('di', 'of')} ${g.players.length} · ${t('Il segreto si nasconde se cambi app.', 'Switching apps hides the secret.')}</p></section>`;
+    return `<div class="game-logo"><span>${t("TROVA L’", "FIND THE")}</span><strong>${t("IMPOSTORE", "IMPOSTOR")}</strong></div>${top}<div class="progress" aria-label="${g.revealIndex + 1}/${g.players.length}">${g.players.map((_, i) => `<i class="${i <= g.revealIndex ? 'done' : ''}"></i>`).join('')}</div><section class="game-screen"><p class="eyebrow">${t('PASSA IL TELEFONO A', 'PASS THE PHONE TO')}</p><h1 class="player-title">${escape(p.name)}</h1><p class="helper">${t('Gli altri guardano altrove. Niente sbirciate.', 'Everyone else looks away. No peeking.')}</p><div id="secret-card" class="secret-card ${revealed ? 'flipped' : ''}">${revealed ? `<span class="role-label">${impostor ? t('SEI UN IMPOSTORE', 'YOU ARE AN IMPOSTOR') : t('SEI DELLA CREW', 'YOU ARE CREW')}</span><span class="secret-icon">${impostor ? '🕵️' : '🤫'}</span><p>${impostor ? t('Il tuo indizio è', 'Your hint is') : t('La parola segreta è', 'The secret word is')}</p><h2 class="secret-word">${escape(impostor ? hint : gameWord)}</h2><p class="helper">${impostor ? t('Mimetizzati. Ascolta. Inventati qualcosa.', 'Blend in. Listen. Make something up.') : t('Fatti capire, senza dire troppo.', 'Be clear, without giving too much away.')}</p>` : `${avatarArt(p.avatar)}${avatar(p, 'character-badge')}<div class="swipe-prompt"><span>↑</span><b>${t('Scorri su per scoprire', 'Swipe up to reveal')}</b><small>${t('oppure usa il pulsante qui sotto', 'or use the button below')}</small></div>`}</div>${revealed ? button('next', `${t('Nascondi e passa', 'Hide and pass')} <span>→</span>`) : button('reveal', `${t('Sono', "I'm")} ${escape(p.name)} · ${t('Mostra', 'Reveal')} <span>◈</span>`)}<p class="footnote">${g.revealIndex + 1} ${t('di', 'of')} ${g.players.length} · ${t('Il segreto si nasconde se cambi app.', 'Switching apps hides the secret.')}</p></section>`;
   }
   if (g.phase === 'discuss') {
     const starter = g.players.find(x => x.id === g.starterId)!;
@@ -95,7 +117,7 @@ function playerDialogView(): string {
   const title = editing ? t('Modifica personaggio.', 'Edit character.') : t('Una nuova faccia.', 'A new face.');
   const helper = editing ? t('Aggiorna nome o avatar. Le partite future useranno questi dati.', 'Update the name or avatar. Future games will use these details.') : t('Il personaggio resta salvato per le prossime partite.', 'Your character is saved for future games.');
   const submit = editing ? t('Salva modifiche', 'Save changes') : t('Aggiungi alla crew', 'Add to the crew');
-  return `<h2 id="dialog-title">${title}</h2><p class="helper">${helper}</p><form id="player-form"><label for="name">${t('Nome o soprannome', 'Name or nickname')}</label><input id="name" name="name" placeholder="${t('Come ti chiami?', "What's your name?")}" value="${escape(draftName)}" maxlength="24" required autocomplete="off"/><span class="field-label">${t('Scegli la tua faccia', 'Pick your face')}</span><button type="button" class="avatar-random" data-action="random-avatar">${t('Avatar casuale', 'Random avatar')}</button><div class="avatar-picker">${avatars.map(([id, label], index) => `<button type="button" data-avatar="${id}" aria-label="${t(`Avatar ${index + 1}: ${label}`, `Avatar ${index + 1}: ${label}`)}" aria-pressed="${id === chosenAvatar}" class="${id === chosenAvatar ? 'chosen' : ''}"><span class="avatar" style="--avatar-position:${(index % 4) * 100 / 3}% ${Math.floor(index / 4) * 100 / 3}%" aria-hidden="true"></span></button>`).join('')}</div><p id="form-error" class="error" role="alert"></p><button class="primary" type="submit">${submit} <span>${editing ? '✓' : '＋'}</span></button></form>`;
+  return `<h2 id="dialog-title">${title}</h2><p class="helper">${helper}</p><form id="player-form"><label for="name">${t('Nome o soprannome', 'Name or nickname')}</label><input id="name" name="name" placeholder="${t('Come ti chiami?', "What's your name?")}" value="${escape(draftName)}" maxlength="24" required autocomplete="off"/><span class="field-label">${t('Scegli la tua faccia', 'Pick your face')}</span><div class="avatar-upload">${avatarMarkup(chosenAvatar, 'avatar-preview')}<div><label class="upload-label" for="avatar-upload">${t('Carica o scatta foto', 'Upload or take photo')}</label><input id="avatar-upload" type="file" accept="image/*" capture="user"/></div></div><p class="upload-hint">${t('La foto resta solo su questo dispositivo.', 'The photo stays on this device.')}</p><button type="button" class="avatar-random" data-action="random-avatar">${t('Avatar casuale', 'Random avatar')}</button><div class="avatar-picker">${avatars.map(([id, label], index) => `<button type="button" data-avatar="${id}" aria-label="${t(`Avatar ${index + 1}: ${label}`, `Avatar ${index + 1}: ${label}`)}" aria-pressed="${id === chosenAvatar}" class="${id === chosenAvatar ? 'chosen' : ''}">${avatarMarkup(id)}</button>`).join('')}</div><p id="form-error" class="error" role="alert"></p><p class="error upload-error" role="alert">${escape(photoError)}</p><button class="primary" type="submit">${submit} <span>${editing ? '✓' : '＋'}</span></button></form>`;
 }
 
 function deleteDialogView(): string {
@@ -123,14 +145,42 @@ function render(): void {
   const modal = root.querySelector('dialog');
   if (modal) {
     modal.showModal();
-    modal.addEventListener('cancel', () => { dialog = null; editingPlayerId = null; deletingPlayerId = null; });
-    modal.addEventListener('click', e => { if (e.target === modal) { dialog = null; editingPlayerId = null; deletingPlayerId = null; render(); } });
+    modal.addEventListener('cancel', () => { dialog = null; editingPlayerId = null; deletingPlayerId = null; photoError = ''; });
+    modal.addEventListener('click', e => { if (e.target === modal) { dialog = null; editingPlayerId = null; deletingPlayerId = null; photoError = ''; render(); } });
     root.querySelector<HTMLInputElement>('#name')?.focus();
   }
 }
 
+function readAvatarPhoto(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/') || file.size > 10 * 1024 * 1024) { reject(new Error('Unsupported image')); return; }
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      const max = 256;
+      const scale = Math.min(1, max / Math.max(image.naturalWidth, image.naturalHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      canvas.getContext('2d')!.drawImage(image, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/webp', .82));
+    };
+    image.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Invalid image')); };
+    image.src = url;
+  });
+}
+
 root.addEventListener('input', e => { if ((e.target as HTMLElement).id === 'name') draftName = (e.target as HTMLInputElement).value; });
-root.addEventListener('change', e => { if ((e.target as HTMLElement).id === 'category') void change(d => { d.settings.category = (e.target as HTMLSelectElement).value; }); });
+root.addEventListener('change', e => {
+  const target = e.target as HTMLInputElement | HTMLSelectElement;
+  if (target.id === 'category') { void change(d => { d.settings.category = (target as HTMLSelectElement).value; }); return; }
+  if (target.id === 'avatar-upload') {
+    const file = (target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    void readAvatarPhoto(file).then(photo => { chosenAvatar = photo; photoError = ''; render(); }).catch(() => { photoError = t('Immagine non valida. Scegline un’altra.', 'Invalid image. Choose another one.'); render(); });
+  }
+});
 root.addEventListener('submit', async e => {
   e.preventDefault();
   const name = draftName.trim().replace(/\s+/g, ' ');
@@ -149,21 +199,22 @@ root.addEventListener('submit', async e => {
       if (d.selectedIds.length < 20) d.selectedIds.push(player.id);
     }
   });
-  if (!error) { dialog = null; editingPlayerId = null; render(); }
+  if (!error) { dialog = null; editingPlayerId = null; photoError = ''; render(); }
 });
 root.addEventListener('click', async e => {
   const target = (e.target as HTMLElement).closest<HTMLButtonElement>('button');
   if (!target || target.disabled || busy) return;
   const { action, player, avatar: pick, accuse } = target.dataset;
-  if (pick && avatars.some(([id]) => id === pick)) { chosenAvatar = pick as AvatarId; render(); return; }
-  if (action === 'random-avatar') { chosenAvatar = avatars[Math.floor(Math.random() * avatars.length)][0]; render(); return; }
+  if (pick && avatars.some(([id]) => id === pick)) { chosenAvatar = pick as AvatarId; photoError = ''; render(); return; }
+  if (action === 'random-avatar') { chosenAvatar = avatars[Math.floor(Math.random() * avatars.length)][0]; photoError = ''; render(); return; }
   if (action === 'edit-player' && player) {
     const current = data.players.find(p => p.id === player);
     if (!current) return;
     editingPlayerId = player;
     deletingPlayerId = null;
     draftName = current.name;
-    chosenAvatar = resolveAvatar(current.avatar);
+    chosenAvatar = isPhotoAvatar(current.avatar) ? current.avatar : resolveAvatar(current.avatar);
+    photoError = '';
     dialog = 'player';
     render();
     return;
@@ -173,6 +224,7 @@ root.addEventListener('click', async e => {
     deletingPlayerId = player;
     editingPlayerId = null;
     dialog = 'delete';
+    photoError = '';
     render();
     return;
   }
@@ -186,8 +238,8 @@ root.addEventListener('click', async e => {
     case 'retry': await init(); break;
     case 'language': revealed = false; await change(d => { d.language = d.language === 'it' ? 'en' : 'it'; }); break;
     case 'rules': revealed = false; dialog = 'rules'; render(); break;
-    case 'add': draftName = ''; editingPlayerId = null; deletingPlayerId = null; chosenAvatar = avatars[Math.floor(Math.random() * avatars.length)][0]; dialog = 'player'; render(); break;
-    case 'close': dialog = null; editingPlayerId = null; deletingPlayerId = null; render(); break;
+    case 'add': draftName = ''; editingPlayerId = null; deletingPlayerId = null; photoError = ''; chosenAvatar = avatars[Math.floor(Math.random() * avatars.length)][0]; dialog = 'player'; render(); break;
+    case 'close': dialog = null; editingPlayerId = null; deletingPlayerId = null; photoError = ''; render(); break;
     case 'confirm-delete': {
       const playerId = deletingPlayerId;
       if (!playerId) break;
@@ -196,7 +248,7 @@ root.addEventListener('click', async e => {
         d.selectedIds = d.selectedIds.filter(id => id !== playerId);
         d.settings.impostors = Math.min(d.settings.impostors, maxImpostors(d.selectedIds.length));
       });
-      if (!error) { dialog = null; deletingPlayerId = null; render(); }
+      if (!error) { dialog = null; deletingPlayerId = null; photoError = ''; render(); }
       break;
     }
     case 'minus': await change(d => { d.settings.impostors = Math.max(1, d.settings.impostors - 1); }); break;
@@ -206,7 +258,7 @@ root.addEventListener('click', async e => {
     case 'next': revealed = false; await change(d => { const g = d.activeGame!; if (g.revealIndex + 1 < g.players.length) g.revealIndex++; else g.phase = 'discuss'; }); window.scrollTo(0, 0); break;
     case 'vote': case 'discuss': await change(d => { d.activeGame!.phase = action; }); window.scrollTo(0, 0); break;
     case 'result': await change(d => { const g = d.activeGame!; if (g.accusedIds.length === g.impostorIds.length) g.phase = 'result'; }); navigator.vibrate?.([30, 40, 30]); window.scrollTo(0, 0); break;
-    case 'exit': revealed = false; dialog = 'exit'; editingPlayerId = null; deletingPlayerId = null; render(); break;
+    case 'exit': revealed = false; dialog = 'exit'; editingPlayerId = null; deletingPlayerId = null; photoError = ''; render(); break;
     case 'home': dialog = null; revealed = false; await change(d => { d.activeGame = null; }); window.scrollTo(0, 0); break;
   }
 });

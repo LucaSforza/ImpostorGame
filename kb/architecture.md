@@ -4,7 +4,7 @@ Impostor is a single-page app written in TypeScript and bundled by Vite. The bui
 
 ## Modules
 
-- `src/main.ts` owns UI state, HTML rendering, events, and the game flow. `init()` loads the local snapshot; every mutation goes through `change()`, which clones the state, saves it, and then re-renders. Setup and gameplay render through the same gameplay theme. Player avatars use the 16-tile `src/assets/avatar-sheet.webp` sprite; legacy emoji values resolve to image tiles without changing stored game rules. Character setup supports random/manual avatar choice, editing existing characters, and confirmed deletion with selection cleanup.
+- `src/main.ts` owns UI state, HTML rendering, events, and the game flow. `init()` loads the local snapshot; every mutation goes through `change()`, which clones the state, saves it, and then re-renders. Setup and gameplay render through the same gameplay theme. Preset player avatars use the 16 individual `src/assets/avatars/avatar-*.webp` tiles; legacy emoji values resolve to image tiles without changing stored game rules. Character setup also accepts a local upload/camera photo, stored as a resized data URL with its original aspect ratio. Character setup supports random/manual avatar choice, editing existing characters, and confirmed deletion with selection cleanup.
 - `src/game.ts` owns the `Game` model, random word selection, role assignment, and the crew win condition.
 - `src/db.ts` defines `AppData<T>` and wraps snapshot reads and writes in IndexedDB.
 - `src/words.ts` contains the categories and the bilingual `WordEntry` corpus.

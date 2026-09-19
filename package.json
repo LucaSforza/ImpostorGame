@@ -1,0 +1,1 @@
+{"name":"impostor-game","private":true,"version":"1.0.0","license":"AGPL-3.0-or-later","type":"module","scripts":{"dev":"vite --host 0.0.0.0","build":"tsc --noEmit && vite build","test":"vitest run","preview":"vite preview --host 0.0.0.0"},"devDependencies":{"fake-indexeddb":"^6.2.4","typescript":"~5.9.3","vite":"^7.1.7","vitest":"^4.1.11"}}

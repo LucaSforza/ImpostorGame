@@ -27,7 +27,7 @@ export type ActiveGame = ImpostorGame | BombGame | SameWaveGame;
 export interface LocalizedEntry { word: string; hint: string; category: string; }
 export function maxImpostors(count: number): number { return Math.max(1, Math.floor((count - 1) / 2)); }
 export function minAttempts(_playerCount: number, impostorCount: number): number { return Math.max(1, impostorCount); }
-export function maxAttempts(playerCount: number, _impostorCount: number): number { return Math.max(1, playerCount); }
+export function maxAttempts(playerCount: number, _impostorCount: number): number { return Math.max(1, Math.floor((playerCount - 1) / 2)); }
 
 function randomIndex(length: number): number {
   if (length <= 0) throw new Error('Invalid random range');
@@ -50,11 +50,13 @@ export function createGame(players: Player[], settings: GameSettings, previousWo
     const j = randomIndex(i + 1);
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
+  const startIndex = randomIndex(players.length);
+  const orderedPlayers = [...players.slice(startIndex), ...players.slice(0, startIndex)];
   return {
-    gameId: 'impostor', id: crypto.randomUUID(), players: structuredClone(players),
+    gameId: 'impostor', id: crypto.randomUUID(), players: structuredClone(orderedPlayers),
     impostorIds: shuffled.slice(0, settings.impostors).map((player) => player.id), entry: candidates[randomIndex(candidates.length)],
     phase: 'reveal', revealIndex: 0, accusedIds: [], eliminatedIds: [], foundImpostorIds: [],
-    starterId: players[randomIndex(players.length)].id, scoreRecorded: false, attemptsUsed: 0, maxAttempts: settings.maxAttempts, lastVoteWasImpostor: null,
+    starterId: orderedPlayers[0].id, scoreRecorded: false, attemptsUsed: 0, maxAttempts: settings.maxAttempts, lastVoteWasImpostor: null,
   };
 }
 export function localizeEntry(entry: WordEntry, locale: Locale): LocalizedEntry {

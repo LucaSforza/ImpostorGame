@@ -8,7 +8,7 @@ const players = (count: number): Player[] => Array.from({ length: count }, (_, i
 describe('statistics', () => {
   it('records one result per participant and skips recorded sessions', () => {
     const roster = players(2);
-    const game = createBombGame(roster, undefined, { now: 0, deadlineMs: 20_000 });
+    const game = createBombGame(roster, undefined, { now: 0, deadlineMs: 20_000, random: () => 0 });
     resolveBomb(game, 20_000);
     assignBombLoser(game, 'p1');
     const once = recordActiveGameResult(roster, game);

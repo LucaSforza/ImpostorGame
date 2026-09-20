@@ -19,7 +19,9 @@ export function createBombGame(players: Player[], prompt: BombPrompt = defaultBo
   const config = typeof options === 'number' ? { now: options } : options;
   const now = config.now ?? Date.now(); const deadlineMs = config.deadlineMs ?? randomDeadlineMs(config.random);
   if (!Number.isSafeInteger(now) || !Number.isSafeInteger(deadlineMs) || deadlineMs < 20_000 || deadlineMs > 45_000) throw new Error('Invalid bomb deadline');
-  return { gameId: 'bomb', id: crypto.randomUUID(), players: structuredClone(players), prompt: structuredClone(prompt), startedAt: now, deadlineAt: now + deadlineMs, phase: 'playing', loserId: null, winnerIds: [], scoreRecorded: false };
+  const startIndex = randomIndex(players.length, config.random);
+  const orderedPlayers = [...players.slice(startIndex), ...players.slice(0, startIndex)];
+  return { gameId: 'bomb', id: crypto.randomUUID(), players: structuredClone(orderedPlayers), prompt: structuredClone(prompt), startedAt: now, deadlineAt: now + deadlineMs, phase: 'playing', loserId: null, winnerIds: [], scoreRecorded: false };
 }
 export function bombExpired(game: BombGame, now = Date.now()): boolean { return game.phase === 'playing' && now >= game.deadlineAt; }
 export function bombWinners(game: BombGame, now = Date.now()): string[] {

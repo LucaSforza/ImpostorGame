@@ -24,6 +24,8 @@ Header help is resolved from current route plus selected or active game. Catalog
 
 `AppData` stores shared players, selections, selected catalog game, per-game settings, interface language, and optional `ActiveGame`. `data.language` remains the single locale source. Sessions store language-neutral IDs and bilingual content; switching language re-renders current game consistently.
 
+Each session stores its own participant order, rotated around a randomly chosen starter when created or rematched. The shared roster stays unchanged. `players[0]` starts Bomba and Stessa Onda; Impostore uses the same first participant as `starterId`. Never rerandomize this order when rendering or restoring a session.
+
 The reveal card is controlled by the module variable `revealed`, which is not part of `AppData` and is never saved. `visibilitychange`, `pagehide`, and `blur` reset it to `false`, so rendering hides the card when the app loses visibility. During the unrevealed state, the card shows character artwork and can be opened with the accessible Reveal button or by swiping upward more than 55 pixels. The local snapshot still contains the active game, including the word entry, role IDs, vote history, and score-recording flag needed to resume after a reload.
 
 ## Persistence and startup

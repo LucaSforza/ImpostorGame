@@ -15,7 +15,7 @@ describe('Bomb', () => {
     expect(game.winnerIds).toEqual([]);
   });
   it('rejects invalid loser IDs and records all other players after assignment', () => {
-    const game = createBombGame(players(3), undefined, { now: 0, deadlineMs: 20_000 });
+    const game = createBombGame(players(3), undefined, { now: 0, deadlineMs: 20_000, random: () => 0 });
     resolveBomb(game, 20_000);
     expect(() => assignBombLoser(game, 'missing')).toThrow('Invalid bomb loser');
     expect(assignBombLoser(game, 'p1')).toEqual(['p0', 'p2']);
@@ -24,15 +24,25 @@ describe('Bomb', () => {
     expect(game.winnerIds).toEqual(['p0', 'p2']);
   });
   it('keeps rematch players and starts a fresh playing round', () => {
-    const game = createBombGame(players(2), undefined, { now: 0, deadlineMs: 20_000 });
-    const rematch = rematchBomb(game, [game.prompt], { now: 50_000, deadlineMs: 45_000 });
+    const roster = players(3);
+    const game = createBombGame(roster, undefined, { now: 0, deadlineMs: 20_000, random: () => 0 });
+    const rematch = rematchBomb(game, [game.prompt], { now: 50_000, deadlineMs: 45_000, random: () => 0.99 });
     expect(rematch.phase).toBe('playing');
-    expect(rematch.players).toEqual(game.players);
+    expect(game.players.map((player) => player.id)).toEqual(['p0', 'p1', 'p2']);
+    expect(rematch.players.map((player) => player.id)).toEqual(['p2', 'p0', 'p1']);
+    expect(roster.map((player) => player.id)).toEqual(['p0', 'p1', 'p2']);
     expect(rematch.id).not.toBe(game.id);
     expect(rematch.startedAt).toBe(50_000);
     expect(rematch.deadlineAt).toBe(95_000);
     expect(rematch.loserId).toBeNull();
     expect(rematch.winnerIds).toEqual([]);
+  });
+  it('starts each new round from a random rotated player', () => {
+    const roster = players(3);
+    const game = createBombGame(roster, undefined, { now: 0, deadlineMs: 20_000, random: () => 0.99 });
+
+    expect(game.players.map((player) => player.id)).toEqual(['p2', 'p0', 'p1']);
+    expect(roster.map((player) => player.id)).toEqual(['p0', 'p1', 'p2']);
   });
   it.each([20_000, 45_000])('accepts deadline %i ms', (deadlineMs) => {
     expect(createBombGame(players(2), undefined, { now: 0, deadlineMs }).deadlineAt).toBe(deadlineMs);

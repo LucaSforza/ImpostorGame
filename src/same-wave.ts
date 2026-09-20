@@ -13,9 +13,11 @@ function validatePlayers(players: Player[]): void { if (players.length < 3 || pl
 function validatePrompt(prompt: SameWavePrompt): void { if (prompt.options.length !== 4 || prompt.optionsEn.length !== 4) throw new Error('Invalid prompt'); }
 function randomIndex(length: number, random: () => number = Math.random): number { if (length <= 0) throw new Error('No same-wave prompts'); return Math.min(length - 1, Math.floor(random() * length)); }
 
-export function createSameWaveGame(players: Player[], prompt: SameWavePrompt = defaultSameWavePrompts[0]): SameWaveGame {
+export function createSameWaveGame(players: Player[], prompt: SameWavePrompt = defaultSameWavePrompts[0], random: () => number = Math.random): SameWaveGame {
   validatePlayers(players); validatePrompt(prompt);
-  return { gameId: 'same-wave', id: crypto.randomUUID(), players: structuredClone(players), prompt: structuredClone(prompt), currentPlayerIndex: 0, picks: {}, phase: 'picking', winnerIds: [], scoreRecorded: false };
+  const startIndex = randomIndex(players.length, random);
+  const orderedPlayers = [...players.slice(startIndex), ...players.slice(0, startIndex)];
+  return { gameId: 'same-wave', id: crypto.randomUUID(), players: structuredClone(orderedPlayers), prompt: structuredClone(prompt), currentPlayerIndex: 0, picks: {}, phase: 'picking', winnerIds: [], scoreRecorded: false };
 }
 export function submitSameWavePick(game: SameWaveGame, playerId: string, choiceId: string): boolean {
   if (game.phase !== 'picking' || game.players[game.currentPlayerIndex]?.id !== playerId) return false;
@@ -35,5 +37,5 @@ export function resolveSameWave(game: SameWaveGame): string[] {
 }
 export function rematchSameWave(game: SameWaveGame, prompts: readonly SameWavePrompt[] = defaultSameWavePrompts, random?: () => number): SameWaveGame {
   if (!prompts.length) throw new Error('No same-wave prompts'); const choicesWithoutCurrent = prompts.filter((prompt) => prompt.id !== game.prompt.id); const pool = choicesWithoutCurrent.length ? choicesWithoutCurrent : prompts;
-  return createSameWaveGame(game.players, pool[randomIndex(pool.length, random)]);
+  return createSameWaveGame(game.players, pool[randomIndex(pool.length, random)], random);
 }

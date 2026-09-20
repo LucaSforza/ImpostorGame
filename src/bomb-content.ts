@@ -27,7 +27,7 @@ export type BombCategory = {
 };
 
 export const BOMB_CATEGORY_LABELS: Readonly<Record<BombCategoryId, BombCategoryLabel>> = {
-  tech: { it: "Aziende tech", en: "Tech companies" },
+  tech: { it: "Tecnologia e videogiochi", en: "Tech and games" },
   food: { it: "Cibo e bevande", en: "Food and drinks" },
   animals: { it: "Animali", en: "Animals" },
   places: { it: "Luoghi", en: "Places" },
@@ -60,8 +60,8 @@ export const BOMB_PROMPTS: readonly BombPrompt[] = [
   { id: "tech-01", category: "tech", topic: "Aziende tech", topicEn: "Tech companies", examples: ["Red Hat", "Apple", "Microsoft"], examplesEn: ["Red Hat", "Apple", "Microsoft"] },
   { id: "tech-02", category: "tech", topic: "App di messaggistica", topicEn: "Messaging apps", examples: ["WhatsApp", "Signal", "Telegram"], examplesEn: ["WhatsApp", "Signal", "Telegram"] },
   { id: "tech-03", category: "tech", topic: "Social network", topicEn: "Social networks", examples: ["Instagram", "TikTok", "LinkedIn"], examplesEn: ["Instagram", "TikTok", "LinkedIn"] },
-  { id: "tech-04", category: "tech", topic: "Sistemi operativi", topicEn: "Operating systems", examples: ["Linux", "Android", "Windows"], examplesEn: ["Linux", "Android", "Windows"] },
-  { id: "tech-05", category: "tech", topic: "Browser web", topicEn: "Web browsers", examples: ["Firefox", "Chrome", "Safari"], examplesEn: ["Firefox", "Chrome", "Safari"] },
+  { id: "tech-04", category: "tech", topic: "Accessori per computer", topicEn: "Computer accessories", examples: ["Mouse", "Tastiera", "Cuffie"], examplesEn: ["Mouse", "Keyboard", "Headphones"] },
+  { id: "tech-05", category: "tech", topic: "Cose che fai con lo smartphone", topicEn: "Things you do on a smartphone", examples: ["Scattare foto", "Chiamare amici", "Cercare indicazioni"], examplesEn: ["Taking photos", "Calling friends", "Looking up directions"] },
   { id: "tech-06", category: "tech", topic: "Videogiochi famosi", topicEn: "Famous video games", examples: ["Minecraft", "Tetris", "Fortnite"], examplesEn: ["Minecraft", "Tetris", "Fortnite"] },
   { id: "tech-07", category: "tech", topic: "Gadget elettronici", topicEn: "Electronic gadgets", examples: ["Smartphone", "Tablet", "Smartwatch"], examplesEn: ["Smartphone", "Tablet", "Smartwatch"] },
 
@@ -98,7 +98,7 @@ export const BOMB_PROMPTS: readonly BombPrompt[] = [
   { id: "sports-03", category: "sports", topic: "Sport d'acqua", topicEn: "Water sports", examples: ["Surf", "Canottaggio", "Pallanuoto"], examplesEn: ["Surfing", "Rowing", "Water polo"] },
   { id: "sports-04", category: "sports", topic: "Sport invernali", topicEn: "Winter sports", examples: ["Sci", "Snowboard", "Pattinaggio"], examplesEn: ["Skiing", "Snowboarding", "Skating"] },
   { id: "sports-05", category: "sports", topic: "Attrezzatura sportiva", topicEn: "Sports equipment", examples: ["Racchetta", "Casco", "Pallone"], examplesEn: ["Racket", "Helmet", "Ball"] },
-  { id: "sports-06", category: "sports", topic: "Ruoli nel calcio", topicEn: "Football positions", examples: ["Portiere", "Attaccante", "Difensore"], examplesEn: ["Goalkeeper", "Striker", "Defender"] },
+  { id: "sports-06", category: "sports", topic: "Cose nella borsa da palestra", topicEn: "Things in a gym bag", examples: ["Borraccia", "Asciugamano", "Scarpe"], examplesEn: ["Water bottle", "Towel", "Trainers"] },
   { id: "sports-07", category: "sports", topic: "Sport da palestra", topicEn: "Gym activities", examples: ["Yoga", "Pilates", "Spinning"], examplesEn: ["Yoga", "Pilates", "Spinning"] },
 
   // Movies and shows
@@ -108,14 +108,14 @@ export const BOMB_PROMPTS: readonly BombPrompt[] = [
   { id: "movies-04", category: "movies", topic: "Oggetti da cinema", topicEn: "Cinema objects", examples: ["Popcorn", "Biglietto", "Proiettore"], examplesEn: ["Popcorn", "Ticket", "Projector"] },
   { id: "movies-05", category: "movies", topic: "Serie TV famose", topicEn: "Famous TV shows", examples: ["Friends", "The Office", "Mercoledì"], examplesEn: ["Friends", "The Office", "Wednesday"] },
   { id: "movies-06", category: "movies", topic: "Professioni del cinema", topicEn: "Movie professions", examples: ["Regista", "Attore", "Sceneggiatore"], examplesEn: ["Director", "Actor", "Screenwriter"] },
-  { id: "movies-07", category: "movies", topic: "Luoghi dei film", topicEn: "Movie locations", examples: ["Cinema", "Set", "Red carpet"], examplesEn: ["Movie theater", "Set", "Red carpet"] },
+  { id: "movies-07", category: "movies", topic: "Mondi immaginari", topicEn: "Fictional worlds", examples: ["Hogwarts", "Terra di Mezzo", "Narnia"], examplesEn: ["Hogwarts", "Middle-earth", "Narnia"] },
 
   // Music
   { id: "music-01", category: "music", topic: "Strumenti musicali", topicEn: "Musical instruments", examples: ["Chitarra", "Pianoforte", "Batteria"], examplesEn: ["Guitar", "Piano", "Drums"] },
   { id: "music-02", category: "music", topic: "Generi musicali", topicEn: "Music genres", examples: ["Pop", "Rock", "Jazz"], examplesEn: ["Pop", "Rock", "Jazz"] },
   { id: "music-03", category: "music", topic: "Cose da concerto", topicEn: "Concert things", examples: ["Palco", "Microfono", "Biglietto"], examplesEn: ["Stage", "Microphone", "Ticket"] },
   { id: "music-04", category: "music", topic: "Ruoli in una band", topicEn: "Band roles", examples: ["Cantante", "Bassista", "Batterista"], examplesEn: ["Singer", "Bassist", "Drummer"] },
-  { id: "music-05", category: "music", topic: "Musica da festa", topicEn: "Party music", examples: ["Dance", "Disco", "Karaoke"], examplesEn: ["Dance", "Disco", "Karaoke"] },
+  { id: "music-05", category: "music", topic: "Occasioni per mettere musica", topicEn: "Occasions for playing music", examples: ["Festa", "Viaggio", "Allenamento"], examplesEn: ["Party", "Road trip", "Workout"] },
   { id: "music-06", category: "music", topic: "Termini musicali", topicEn: "Music terms", examples: ["Ritmo", "Melodia", "Ritornello"], examplesEn: ["Rhythm", "Melody", "Chorus"] },
   { id: "music-07", category: "music", topic: "Suoni della natura", topicEn: "Sounds of nature", examples: ["Pioggia", "Tuono", "Onde"], examplesEn: ["Rain", "Thunder", "Waves"] },
 
@@ -123,7 +123,7 @@ export const BOMB_PROMPTS: readonly BombPrompt[] = [
   { id: "nature-01", category: "nature", topic: "Fiori", topicEn: "Flowers", examples: ["Rosa", "Girasole", "Tulipano"], examplesEn: ["Rose", "Sunflower", "Tulip"] },
   { id: "nature-02", category: "nature", topic: "Alberi", topicEn: "Trees", examples: ["Quercia", "Pino", "Olivo"], examplesEn: ["Oak", "Pine", "Olive tree"] },
   { id: "nature-03", category: "nature", topic: "Fenomeni atmosferici", topicEn: "Weather phenomena", examples: ["Arcobaleno", "Neve", "Nebbia"], examplesEn: ["Rainbow", "Snow", "Fog"] },
-  { id: "nature-04", category: "nature", topic: "Elementi naturali", topicEn: "Natural elements", examples: ["Acqua", "Fuoco", "Vento"], examplesEn: ["Water", "Fire", "Wind"] },
+  { id: "nature-04", category: "nature", topic: "Cose che trovi nel bosco", topicEn: "Things you find in a forest", examples: ["Muschio", "Pigne", "Funghi"], examplesEn: ["Moss", "Pine cones", "Mushrooms"] },
   { id: "nature-05", category: "nature", topic: "Paesaggi naturali", topicEn: "Natural landscapes", examples: ["Cascata", "Deserto", "Ghiacciaio"], examplesEn: ["Waterfall", "Desert", "Glacier"] },
   { id: "nature-06", category: "nature", topic: "Colori della natura", topicEn: "Colors in nature", examples: ["Verde", "Azzurro", "Marrone"], examplesEn: ["Green", "Blue", "Brown"] },
   { id: "nature-07", category: "nature", topic: "Cose da giardino", topicEn: "Garden things", examples: ["Seme", "Annaffiatoio", "Terriccio"], examplesEn: ["Seed", "Watering can", "Potting soil"] },

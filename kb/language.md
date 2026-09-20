@@ -25,3 +25,7 @@ No game, database, or word-entry fields should be added for a new locale. Snapsh
 ## Compatibility
 
 `loadData()` validates snapshots at the persistence boundary. A snapshot with invalid category selection, language, player, or top-level fields is deleted and treated as a fresh install. No legacy labels or per-game language fields are migrated.
+
+Active games retain their saved bilingual content when catalog wording changes. Validation checks content shape, non-empty text, supported categories, and the four-choice Stessa Onda format; it does not compare saved text with the current catalog. Preserve category and prompt IDs when polishing copy. New rounds use the revised catalog, while resumed rounds keep their original words, hints, questions, and answer order.
+
+Prefer concrete, playful vocabulary, accurate translations, and themes with enough possible answers for a Bomba round. Stessa Onda choices should answer the same question and be distinct and comparable. Display labels may change independently of stable IDs (for example `boomer` displays “Effetto nostalgia”).

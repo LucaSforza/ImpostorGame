@@ -64,15 +64,16 @@ classDiagram
   class BombGame {
     +BombPrompt prompt
     +string phase
-    +number deadline
+    +number startedAt
+    +number deadlineAt
     +string loserId
     +string[] winnerIds
   }
   class SameWaveGame {
     +SameWavePrompt prompt
     +string phase
-    +number revealIndex
-    +Record selections
+    +number currentPlayerIndex
+    +Record picks
     +string[] winnerIds
   }
   class WordEntry {
@@ -96,6 +97,8 @@ classDiagram
 `AppData` is the complete snapshot written under `current`. `activeGame` may be `null`; its `gameId` selects one union member and allows exact resume after reload. Every session carries `scoreRecorded`, preventing duplicate updates after re-renders or reloads. Bomb uses an absolute deadline so elapsed time survives reload without persisting a timer handle; expiry opens adjudication and loser/winners remain empty until group selection. Player totals are derived from per-game records. Impostore retains its role breakdown. Locale and transient reveal flags remain outside individual game records.
 
 `loadData()` validates and migrates snapshots at the boundary. Legacy counters become Impostore statistics; legacy settings become `settings.impostor`; legacy active games gain `gameId: "impostor"`; selected game defaults to Impostore. New writes use only target shape. Malformed or unsupported snapshots are deleted and treated as absent. No IndexedDB version bump is needed because compatibility normalization operates on single stored snapshot value.
+
+Saved game content is validated structurally and remains independent of later editorial changes to the catalog. Missing supported Impostore attempt settings default to the minimum rather than becoming `NaN`. Impostore wins and losses must match their role-specific sums. Stessa Onda picks must belong exactly to the players before `currentPlayerIndex`; completed sessions must contain every pick and the correct largest-group winners, including ties or no match.
 
 ## Data scope
 

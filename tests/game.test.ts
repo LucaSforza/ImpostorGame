@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Player } from "../src/db";
 import { citizensWin, createGame, localizeEntry, recordGameResult, resolveVote } from "../src/game";
 import type { CategorySelection } from "../src/words";
@@ -46,10 +46,17 @@ describe("createGame", () => {
     expect(() => createGame(players, makeSettings(1))).toThrow("Invalid player count");
   });
 
-  it("allows one vote per session and bounds sessions between impostors and players", () => {
-    expect(() => createGame(makePlayers(5), { ...makeSettings(2), maxAttempts: 1 })).toThrow("Invalid attempt count");
-    expect(() => createGame(makePlayers(5), { ...makeSettings(2), maxAttempts: 6 })).toThrow("Invalid attempt count");
-    expect(createGame(makePlayers(5), { ...makeSettings(2), maxAttempts: 3 }).maxAttempts).toBe(3);
+  it("bounds sessions between impostor minimum and candidate maximum", () => {
+    expect(() => createGame(makePlayers(7), { ...makeSettings(2), maxAttempts: 1 })).toThrow("Invalid attempt count");
+    expect(() => createGame(makePlayers(7), { ...makeSettings(2), maxAttempts: 4 })).toThrow("Invalid attempt count");
+    expect(createGame(makePlayers(7), { ...makeSettings(2), maxAttempts: 3 }).maxAttempts).toBe(3);
+  });
+
+  it.each(Array.from({ length: 18 }, (_, index) => index + 3))("limits new games to the configured candidate maximum for %i players", (playerCount) => {
+    const maximum = Math.max(1, Math.floor((playerCount - 1) / 2));
+
+    expect(createGame(makePlayers(playerCount), { ...makeSettings(1), maxAttempts: maximum }).maxAttempts).toBe(maximum);
+    expect(() => createGame(makePlayers(playerCount), { ...makeSettings(1), maxAttempts: maximum + 1 })).toThrow("Invalid attempt count");
   });
 
   it("rejects categories without words", () => {
@@ -73,10 +80,27 @@ describe("createGame", () => {
     const game = createGame(players, makeSettings(1));
 
     players[0].name = "Changed input";
-    game.players[1].name = "Changed game";
+    game.players.find((player) => player.id === "player-2")!.name = "Changed game";
 
-    expect(game.players[0].name).toBe("Player 1");
+    expect(game.players.find((player) => player.id === "player-1")!.name).toBe("Player 1");
     expect(players[1].name).toBe("Player 2");
+  });
+
+  it("starts reveal and discussion from a random rotated player order", () => {
+    const randomValues = vi.spyOn(crypto, "getRandomValues").mockImplementation((array) => {
+      (array as Uint32Array)[0] = 1;
+      return array;
+    });
+
+    try {
+      const game = createGame(makePlayers(3), makeSettings(1));
+
+      expect(game.players.map((player) => player.id)).toEqual(["player-2", "player-3", "player-1"]);
+      expect(game.starterId).toBe("player-2");
+      expect(game.revealIndex).toBe(0);
+    } finally {
+      randomValues.mockRestore();
+    }
   });
 });
 
@@ -99,7 +123,7 @@ describe("citizensWin", () => {
 
 describe("resolveVote", () => {
   it("resolves one candidate per session and keeps prior votes unavailable", () => {
-    const game = createGame(makePlayers(5), { ...makeSettings(2), maxAttempts: 3 });
+    const game = createGame(makePlayers(7), { ...makeSettings(2), maxAttempts: 3 });
     const wrongId = game.players.find(player => !game.impostorIds.includes(player.id))!.id;
     const [firstImpostor, secondImpostor] = game.impostorIds;
 

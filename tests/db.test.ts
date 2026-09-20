@@ -2,6 +2,8 @@ import "fake-indexeddb/auto";
 import { afterEach, describe, expect, it } from "vitest";
 import { emptyPlayerStats, loadData, saveData, type AppData, type SettingsByGame } from "../src/db";
 import { BOMB_PROMPTS } from "../src/bomb-content";
+import { SAME_WAVE_PROMPTS } from "../src/same-wave-content";
+import { words } from "../src/words";
 
 const databaseName = "impostor-game";
 const settings = (category = "all"): SettingsByGame => ({
@@ -167,6 +169,28 @@ describe("local game snapshot", () => {
     await expect(loadData()).resolves.toMatchObject({ settings: { impostor: { maxAttempts: 2 } } });
   });
 
+  it("clamps old setup limits to the new bound while preserving active impostor games", async () => {
+    const players = Array.from({ length: 3 }, (_, index) => ({ id: `p${index + 1}`, name: `Player ${index + 1}`, avatar: "fox", createdAt: index + 1 }));
+    const legacy = {
+      players,
+      selectedIds: players.map((player) => player.id),
+      settings: { impostors: 1, maxAttempts: 3, category: "animals" },
+      language: "en",
+      activeGame: {
+        id: "game-1", players, impostorIds: ["p1"], entry: words[0], phase: "vote", revealIndex: 2,
+        accusedIds: [], eliminatedIds: [], foundImpostorIds: [], starterId: "p2", scoreRecorded: false,
+        attemptsUsed: 2, maxAttempts: 3, lastVoteWasImpostor: null,
+      },
+    } as unknown as AppData<null>;
+
+    await saveData(legacy);
+
+    await expect(loadData()).resolves.toMatchObject({
+      settings: { impostor: { maxAttempts: 1 } },
+      activeGame: { gameId: "impostor", maxAttempts: 3 },
+    });
+  });
+
   it("deletes snapshots with malformed new stats, game settings, or active games", async () => {
     const invalid = {
       players: [{ id: "p1", name: "Ada", avatar: "fox", createdAt: 123, stats: { impostor: {}, bomb: {}, sameWave: {} } }],
@@ -220,5 +244,42 @@ describe("local game snapshot", () => {
 
     await expect(loadData()).resolves.toBeNull();
     await expect(loadData()).resolves.toBeNull();
+  });
+
+  it("rejects malformed bilingual content without requiring current catalog text", async () => {
+    const players = [1, 2, 3].map((index) => ({ id: `p${index}`, name: `Player ${index}`, avatar: "fox", createdAt: index, stats: emptyPlayerStats() }));
+    const base = { players, selectedIds: players.map((player) => player.id), settings: settings(), language: "it" as const };
+    const invalidGames = [
+      {
+        gameId: "impostor", id: "game-1", players, impostorIds: ["p1"], entry: { ...words[0], word: "   " }, phase: "reveal",
+        revealIndex: 0, accusedIds: [], eliminatedIds: [], foundImpostorIds: [], starterId: "p1", scoreRecorded: false, attemptsUsed: 0, maxAttempts: 1, lastVoteWasImpostor: null,
+      },
+      {
+        gameId: "bomb", id: "game-2", players, prompt: { ...BOMB_PROMPTS[0], examples: [""] }, startedAt: 1000, deadlineAt: 21000,
+        phase: "playing", loserId: null, winnerIds: [], scoreRecorded: false,
+      },
+      {
+        gameId: "same-wave", id: "game-3", players, prompt: { ...SAME_WAVE_PROMPTS[0], options: ["Only three", "answers", "here"] },
+        currentPlayerIndex: 0, picks: {}, phase: "picking", winnerIds: [], scoreRecorded: false,
+      },
+    ];
+
+    for (const activeGame of invalidGames) {
+      await saveData({ ...base, selectedGameId: activeGame.gameId as AppData["selectedGameId"], activeGame });
+      await expect(loadData()).resolves.toBeNull();
+    }
+  });
+
+  it("round-trips valid same-wave picking and result phases", async () => {
+    const players = [1, 2, 3].map((index) => ({ id: `p${index}`, name: `Player ${index}`, avatar: "fox", createdAt: index, stats: emptyPlayerStats() }));
+    const base = { players, selectedIds: players.map((player) => player.id), selectedGameId: "same-wave" as const, settings: settings(), language: "it" as const };
+    const prompt = SAME_WAVE_PROMPTS[0];
+    const picking = { ...base, activeGame: { gameId: "same-wave" as const, id: "game-4", players, prompt, currentPlayerIndex: 1, picks: { p1: "0" }, phase: "picking" as const, winnerIds: [], scoreRecorded: false } };
+    await saveData(picking);
+    await expect(loadData()).resolves.toEqual(picking);
+
+    const result = { ...base, activeGame: { ...picking.activeGame, id: "game-5", currentPlayerIndex: 3, picks: { p1: "0", p2: "0", p3: "1" }, phase: "result" as const, winnerIds: ["p1", "p2"] } };
+    await saveData(result);
+    await expect(loadData()).resolves.toEqual(result);
   });
 });

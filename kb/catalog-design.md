@@ -79,7 +79,7 @@ Existing hidden-role game remains behavior-compatible: 3–20 players, configura
 
 ### Bomba
 
-Two to twenty players choose a bilingual topic category such as tech companies. A round starts a common random timer between 20 and 45 seconds while app shows bomb and topic. Players say valid, unused answers aloud and manage turns themselves; app has no pass button, holder state, microphone, or answer validation. When timer expires, app opens group adjudication. Group selects player caught by explosion; selected player receives loss/negative result and every other participant wins. No statistic is recorded before selection. Reload resumes from persisted absolute deadline or adjudication screen. A rematch keeps players and topic selection but chooses new prompt and deadline.
+Two to twenty players choose a bilingual topic category such as technology and games. A round lasts a random 20–45 seconds while the app shows the bomb and topic; remaining time is secret, including to assistive technology. No countdown or progress indicator reveals the deadline. Players say valid, unused answers aloud and manage turns themselves; app has no pass button, holder state, microphone, or answer validation. At expiry, a short local explosion sound, animation, and accessible BOOM message announce group adjudication. Group selects the player caught by the explosion; selected player receives loss/negative result and every other participant wins. No statistic is recorded before selection. Reload resumes from the persisted absolute deadline or adjudication screen without replaying a completed explosion. A rematch keeps players and topic selection but chooses a new prompt and deadline. Sound failure must not block adjudication, and reduced-motion preferences disable the explosion animation.
 
 Bomb content is data-driven. Each `BombPrompt` has stable ID, category ID, Italian/English topic, and bilingual examples used only as optional inspiration before round starts. Runtime never downloads content.
 
@@ -110,7 +110,7 @@ Pocket Circle uses one visual language on every route and in every game. Catalog
 - Background: deep plum `#17121F`; raised surface `#211A2B`; interactive surface `#2A2135`.
 - Text: warm white `#F8F5FB`; secondary text `#C8BED2`; muted text `#A89DB5`.
 - Primary accent: electric lime `#D4F777`; dark text on lime `#202713`.
-- Secondary accent: soft violet `#B9A7E8`. Coral `#FF7657` is reserved for danger, Bomba countdown urgency, and destructive confirmation.
+- Secondary accent: soft violet `#B9A7E8`. Coral `#FF7657` is reserved for danger, Bomba identity/explosion feedback, and destructive confirmation.
 - Borders use `#463952`. Focus rings use lime and remain visible on every background.
 - Body text is at least `14px` on mobile; supporting metadata at least `12px`. Line height is at least `1.45`. No essential copy uses low-opacity text.
 - Page width is fluid with a readable maximum. At `320px` and wider there is no horizontal page overflow.

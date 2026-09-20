@@ -1,8 +1,7 @@
 import type { Locale } from './i18n';
-import { isCategorySelection, words, type CategorySelection } from './words';
+import { isCategoryId, isCategorySelection, type CategorySelection } from './words';
 import type { GameId } from './catalog';
-import { BOMB_CATEGORY_IDS, BOMB_PROMPTS } from './bomb-content';
-import { SAME_WAVE_PROMPTS } from './same-wave-content';
+import { BOMB_CATEGORY_IDS } from './bomb-content';
 export type { GameId } from './catalog';
 
 export interface GameStats {
@@ -99,13 +98,19 @@ export function emptyPlayerStats(): PlayerStats {
   return { impostor: { ...emptyGameStats(), citizenWins: 0, citizenLosses: 0, impostorWins: 0, impostorLosses: 0 }, bomb: emptyGameStats(), sameWave: emptyGameStats() };
 }
 function isCounter(value: unknown): value is number { return Number.isSafeInteger(value) && (value as number) >= 0; }
+function isNonEmptyString(value: unknown): value is string { return typeof value === 'string' && value.trim().length > 0; }
+function isStringArray(value: unknown, expectedLength?: number): value is string[] {
+  return Array.isArray(value) && value.length > 0 && (expectedLength === undefined || value.length === expectedLength) && value.every(isNonEmptyString);
+}
 function isGameStats(value: unknown): value is GameStats {
   return isRecord(value) && isCounter(value.gamesPlayed) && isCounter(value.wins) && isCounter(value.losses) && value.wins + value.losses === value.gamesPlayed;
 }
 function isImpostorStats(value: unknown): value is ImpostorStats {
   if (!isGameStats(value) || !isRecord(value)) return false;
   return isCounter(value.citizenWins) && isCounter(value.citizenLosses) && isCounter(value.impostorWins) && isCounter(value.impostorLosses)
-    && value.citizenWins + value.citizenLosses + value.impostorWins + value.impostorLosses === value.gamesPlayed;
+    && value.citizenWins + value.citizenLosses + value.impostorWins + value.impostorLosses === value.gamesPlayed
+    && value.citizenWins + value.impostorWins === value.wins
+    && value.citizenLosses + value.impostorLosses === value.losses;
 }
 function isPlayerStats(value: unknown): value is PlayerStats { return isRecord(value) && isImpostorStats(value.impostor) && isGameStats(value.bomb) && isGameStats(value.sameWave); }
 
@@ -144,8 +149,9 @@ function isPlayerList(value: unknown, minimum: number, maximum: number): value i
     && new Set(value.map((player) => player.id)).size === value.length;
 }
 function isWordEntry(value: unknown): boolean {
-  return isRecord(value) && typeof value.word === 'string' && typeof value.hint === 'string' && typeof value.wordEn === 'string' && typeof value.hintEn === 'string'
-    && typeof value.category === 'string' && words.some((entry) => entry.word === value.word && entry.hint === value.hint && entry.wordEn === value.wordEn && entry.hintEn === value.hintEn && entry.category === value.category);
+  // Sessions own their text: catalog edits must not invalidate saved profiles or games.
+  return isRecord(value) && isNonEmptyString(value.word) && isNonEmptyString(value.hint) && isNonEmptyString(value.wordEn) && isNonEmptyString(value.hintEn)
+    && isCategoryId(value.category) && value.category !== 'all';
 }
 function hasPlayerIds(value: unknown, players: readonly Record<string, unknown>[]): value is string[] {
   return Array.isArray(value) && value.every((id) => typeof id === 'string') && new Set(value).size === value.length
@@ -170,15 +176,15 @@ function isBombGameSnapshot(value: Record<string, unknown>): boolean {
   const players = value.players;
   if (!isPlayerList(players, 2, 20) || typeof value.id !== 'string' || !isRecord(value.prompt)) return false;
   const prompt = value.prompt;
-  const knownPrompt = BOMB_PROMPTS.some((candidate) => candidate.id === prompt.id && prompt.category === candidate.category && prompt.topic === candidate.topic && prompt.topicEn === candidate.topicEn
-    && Array.isArray(prompt.examples) && Array.isArray(prompt.examplesEn) && prompt.examples.length === candidate.examples.length && prompt.examplesEn.length === candidate.examplesEn.length
-    && prompt.examples.every((example, index) => example === candidate.examples[index]) && prompt.examplesEn.every((example, index) => example === candidate.examplesEn[index]));
+  const validPrompt = isNonEmptyString(prompt.id) && typeof prompt.category === 'string' && BOMB_CATEGORY_IDS.includes(prompt.category as typeof BOMB_CATEGORY_IDS[number])
+    && isNonEmptyString(prompt.topic) && isNonEmptyString(prompt.topicEn) && isStringArray(prompt.examples) && isStringArray(prompt.examplesEn)
+    && prompt.examples.length === prompt.examplesEn.length;
   const playerIds = players.map((player) => player.id as string);
   const winnerIds = value.winnerIds;
   const loserId = value.loserId;
   if (!hasPlayerIds(winnerIds, players)) return false;
   const validWinnerIds = winnerIds as string[];
-  return knownPrompt && isCounter(value.startedAt) && isCounter(value.deadlineAt) && value.deadlineAt > value.startedAt
+  return validPrompt && isCounter(value.startedAt) && isCounter(value.deadlineAt) && value.deadlineAt > value.startedAt
     && value.deadlineAt - value.startedAt >= 20_000 && value.deadlineAt - value.startedAt <= 45_000
     && typeof value.phase === 'string' && ['playing', 'assigning', 'result'].includes(value.phase)
     && (loserId === null || (typeof loserId === 'string' && playerIds.includes(loserId)))
@@ -189,16 +195,27 @@ function isSameWaveGameSnapshot(value: Record<string, unknown>): boolean {
   const players = value.players;
   if (!isPlayerList(players, 3, 20) || typeof value.id !== 'string' || !isRecord(value.prompt)) return false;
   const prompt = value.prompt;
-  const knownPrompt = SAME_WAVE_PROMPTS.some((candidate) => candidate.id === prompt.id && prompt.prompt === candidate.prompt && prompt.promptEn === candidate.promptEn
-    && Array.isArray(prompt.options) && Array.isArray(prompt.optionsEn) && prompt.options.length === 4 && prompt.optionsEn.length === 4
-    && prompt.options.every((option, index) => option === candidate.options[index]) && prompt.optionsEn.every((option, index) => option === candidate.optionsEn[index]));
-  if (!knownPrompt || !isCounter(value.currentPlayerIndex) || value.currentPlayerIndex > players.length || !isRecord(value.picks) || !hasPlayerIds(value.winnerIds, players)) return false;
-  const playerIds = new Set(players.map((player) => player.id));
-  const picks = Object.entries(value.picks);
-  return picks.every(([id, choice]) => playerIds.has(id) && typeof choice === 'string' && /^[0-3]$/.test(choice))
-    && typeof value.phase === 'string' && ['picking', 'result'].includes(value.phase)
-    && (value.scoreRecorded === undefined || typeof value.scoreRecorded === 'boolean')
-    && (value.phase === 'picking' ? value.winnerIds.length === 0 && value.currentPlayerIndex < players.length : picks.length === players.length);
+  const validPrompt = isNonEmptyString(prompt.id) && isNonEmptyString(prompt.prompt) && isNonEmptyString(prompt.promptEn)
+    && isStringArray(prompt.options, 4) && isStringArray(prompt.optionsEn, 4);
+  if (!validPrompt || !isCounter(value.currentPlayerIndex) || value.currentPlayerIndex > players.length || !isRecord(value.picks) || !hasPlayerIds(value.winnerIds, players)) return false;
+  const playerIds = new Set(players.map((player) => player.id as string));
+  const currentPlayerIndex = value.currentPlayerIndex as number;
+  const savedPicks = value.picks as Record<string, unknown>;
+  const picks = Object.entries(savedPicks);
+  if (!picks.every(([id, choice]) => playerIds.has(id) && typeof choice === 'string' && /^[0-3]$/.test(choice))) return false;
+  const prefix = players.slice(0, currentPlayerIndex).every((player) => Object.prototype.hasOwnProperty.call(savedPicks, player.id as string));
+  const suffix = players.slice(currentPlayerIndex).every((player) => !Object.prototype.hasOwnProperty.call(savedPicks, player.id as string));
+  if (picks.length !== currentPlayerIndex || !prefix || !suffix || typeof value.phase !== 'string' || !['picking', 'result'].includes(value.phase)
+    || (value.scoreRecorded !== undefined && typeof value.scoreRecorded !== 'boolean')) return false;
+  if (value.phase === 'picking') return value.winnerIds.length === 0 && currentPlayerIndex < players.length;
+  if (currentPlayerIndex !== players.length) return false;
+  const counts = new Map<string, number>();
+  picks.forEach(([, choice]) => { const selected = choice as string; counts.set(selected, (counts.get(selected) ?? 0) + 1); });
+  const largest = Math.max(0, ...counts.values());
+  const winningChoices = new Set([...counts.entries()].filter(([, count]) => count === largest && count >= 2).map(([choice]) => choice));
+  const expectedWinnerIds = largest < 2 ? [] : players.filter((player) => winningChoices.has(savedPicks[player.id as string] as string)).map((player) => player.id as string);
+  const winnerIds = value.winnerIds as string[];
+  return winnerIds.length === expectedWinnerIds.length && winnerIds.every((id) => expectedWinnerIds.includes(id));
 }
 function isActiveGame(value: unknown): boolean {
   if (value === null) return true;
@@ -244,9 +261,10 @@ function normalizeSnapshot<T>(stored: unknown): AppData<T> {
   const old = source.settings as Record<string, unknown>;
   const impostor: GameSettings = legacySettings ? { impostors: old.impostors as number, maxAttempts: isCounter(old.maxAttempts) ? old.maxAttempts : Math.max(1, old.impostors as number), category: old.category as CategorySelection } : structuredClone((source.settings as SettingsByGame).impostor);
   const minimumAttempts = Math.max(1, impostor.impostors);
-  const maximumAttempts = Math.max(1, (source.selectedIds as string[]).length);
+  const maximumAttempts = Math.max(1, Math.floor(((source.selectedIds as string[]).length - 1) / 2));
+  const configuredAttempts = isCounter(impostor.maxAttempts) ? impostor.maxAttempts : minimumAttempts;
   const settings: SettingsByGame = {
-    impostor: { ...impostor, maxAttempts: Math.max(minimumAttempts, Math.min(maximumAttempts, impostor.maxAttempts)) },
+    impostor: { ...impostor, maxAttempts: Math.max(minimumAttempts, Math.min(maximumAttempts, configuredAttempts)) },
     bomb: legacySettings ? { category: 'all' } : structuredClone((source.settings as SettingsByGame).bomb),
     sameWave: legacySettings ? { category: 'all' } : structuredClone((source.settings as SettingsByGame).sameWave),
   };

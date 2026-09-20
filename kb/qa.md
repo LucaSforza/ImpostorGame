@@ -8,9 +8,12 @@ Automated gates:
 - legacy IndexedDB snapshot migrates without losing players, photos, selections, Impostore settings, active game, or counters;
 - invalid new snapshots are rejected; failed writes preserve previous snapshot;
 - shared player selection is visible to every game setup;
+- every new game/rematch draws a random first player, preserves the shared roster, and saves the chosen order; reload must not rerandomize it;
 - each game enforces its documented player bounds and rejects malformed settings/content;
 - Impostore regression suite remains green;
-- Bomba exposes no pass/holder controls, expires from persisted deadline, resumes into timer or adjudication, rejects invalid loser IDs, and records selected loser plus all winners once;
+- new Impostore sessions allow at most `floor((players - 1) / 2)` attempts (3–4 players → 1); setup clamps limits after selection changes, and valid older in-progress sessions retain their saved rules;
+- Bomba exposes no pass/holder controls or remaining time, expires from a persisted random deadline, resumes into play or adjudication, rejects invalid loser IDs, and records selected loser plus all winners once;
+- a fresh Bomba expiry produces one local explosion sound and brief animation plus an accessible BOOM message; reload does not replay it, reduced motion suppresses animation, and unavailable audio does not prevent adjudication;
 - Stessa Onda keeps choices private until completion, resolves single/tied/no-match winner groups, and records once;
 - aggregate statistics equal sum of per-game records and reject inconsistent edits;
 - Italian and English catalogs cover every message and game-content projection;
@@ -25,7 +28,7 @@ Browser QA at 390 × 844 and 320 × 740:
 - contextual help shows app guidance on catalog, statistics guidance on `#stats`, and matching rules for each selected or active game; verify every variant in Italian and English without state mutation;
 - each card opens correct setup and shared saved profiles survive reload and game switching;
 - complete one session of every game, then verify separate `#stats` page for all players and all games;
-- refresh during each private/realtime phase: secrets return hidden, Bomba deadline continues, completed results do not double count;
+- refresh during each private/realtime phase: secrets return hidden, Bomba deadline continues without showing remaining time, completed results do not double count;
 - navigate back/forward between `#catalog` and `#stats`; active sessions require explicit exit confirmation;
 - switch Italian/English on catalog, setup, live game, result, and statistics screens;
 - verify keyboard focus, button labels, dialogs, reduced motion, empty roster, empty statistics, long names, and local photo avatars;

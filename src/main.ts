@@ -5,6 +5,7 @@ import { assignBombLoser, bombExpired, createBombGame, rematchBomb, resolveBomb,
 import { createSameWaveGame, rematchSameWave, submitSameWavePick, type SameWaveGame } from './same-wave';
 import { BOMB_CATEGORIES, BOMB_PROMPTS, type BombCategoryId } from './bomb-content';
 import { SAME_WAVE_PROMPTS } from './same-wave-content';
+import { playBombExplosion, primeBombAudio } from './bomb-audio';
 import { gameCatalog, type GameId } from './catalog';
 import { playerGameStats, recordActiveGameResult, totalStats } from './stats';
 import { categoryDescription, categoryLabel, translate, type MessageKey, type MessageParams } from './i18n';
@@ -87,6 +88,10 @@ let error = '';
 let categoryScreen = false;
 let screen: AppScreen = screenFromHash(location.hash);
 let bombTimer: number | null = null;
+let bombExpiryInFlight = false;
+let bombExpiryAttemptedGameId: string | null = null;
+let bombExplosionFeedback = false;
+let bombExplosionFeedbackTimer: number | null = null;
 let dialog: 'player' | 'rules' | 'exit' | 'delete' | null = null;
 let chosenAvatar: string = avatars[0][0];
 let draftName = '';
@@ -125,19 +130,22 @@ function playerCard(p: Player): string {
   return `<div class="player-row"><button class="player ${included ? 'selected' : ''}" data-player="${p.id}" aria-pressed="${included}" ${disabled ? 'disabled' : ''}>${avatar(p)}<span class="player-copy"><span class="player-name">${escape(p.name)}</span><span class="player-stats">${playerStatsSummary(p)}</span></span><span class="check" aria-hidden="true">${included ? '✓' : '+'}</span></button><div class="player-actions"><button type="button" class="player-action" data-action="edit-player" data-player="${p.id}" aria-label="${t('action.edit')} ${escape(p.name)}" ${disabled ? 'disabled' : ''}>${t('action.edit')}</button><button type="button" class="player-action danger" data-action="delete-player" data-player="${p.id}" aria-label="${t('action.delete')} ${escape(p.name)}" ${disabled ? 'disabled' : ''}>${t('action.delete')}</button></div></div>`;
 }
 
-async function change(update: (next: AppData<ActiveGame>) => void): Promise<void> {
-  if (busy || !storageReady) return;
+async function change(update: (next: AppData<ActiveGame>) => void): Promise<boolean> {
+  if (busy || !storageReady) return false;
   busy = true;
   root.querySelectorAll<HTMLButtonElement | HTMLSelectElement>('button, select').forEach(control => { control.disabled = true; });
   const next = structuredClone(data);
+  let saved = false;
   try {
     update(next);
     await saveData(next);
     data = next;
     error = '';
+    saved = true;
   } catch {
     error = t('error.save');
   } finally { busy = false; render(); }
+  return saved;
 }
 
 function categoryCard(category: 'all' | SelectableCategoryId): string {
@@ -267,14 +275,14 @@ function bombGameView(g: BombGame): string {
     return `${top}<section class="game-screen result live-card"><span class="big-symbol">💥</span><p class="eyebrow">${t('bomb.result.eyebrow')}</p><h1>${t('bomb.result.title', { name: escape(loser?.name ?? '') })}</h1><p class="helper">${t('bomb.result.helper')}</p><span class="topic">${escape(topic)}</span>${button('again', `${t('game.rematch')} <span>↻</span>`)}${button('home', t('game.changeSetup'), 'text-btn')}</section>`;
   }
   if (g.phase === 'assigning') {
+    if (bombExplosionFeedback) {
+      return `${top}<section class="game-screen bomb-explosion-feedback live-card" aria-live="assertive"><span class="big-symbol bomb-explosion-symbol" aria-hidden="true">💥</span><p class="eyebrow">${t('bomb.explosion.eyebrow')}</p><h1>${t('bomb.explosion.title')}</h1><p class="helper" role="status">${t('bomb.explosion.message')}</p></section>`;
+    }
     const players = g.players.map(player => `<button class="player" data-action="bomb-loser" data-bomb-loser="${escape(player.id)}"><span class="avatar-wrap">${avatar(player)}</span><span>${escape(player.name)}</span><span class="check">→</span></button>`).join('');
     return `${top}<section class="game-screen bomb-assign live-card"><span class="big-symbol">💥</span><p class="eyebrow">${t('bomb.assign.eyebrow')}</p><h1>${t('bomb.assign.title')}</h1><p class="helper">${t('bomb.assign.helper')}</p><div class="players vote-players">${players}</div></section>`;
   }
-  return `${top}<section class="game-screen live-card"><p class="eyebrow">${t('bomb.topic')}</p><span class="topic">${escape(topic)}</span><div class="bomb-orb" aria-hidden="true">💣</div><p class="eyebrow">${t('bomb.timer')}</p><div class="bomb-timer" id="bomb-timer" role="timer" aria-live="polite">${bombRemaining(g.deadlineAt)}</div><p class="helper">${t('bomb.tick')}</p></section>`;
-}
-
-function bombRemaining(deadlineAt: number): string {
-  return `${Math.max(0, Math.ceil((deadlineAt - Date.now()) / 1000))}s`;
+  const starter = g.players[0];
+  return `${top}<section class="game-screen live-card"><p class="eyebrow">${t('bomb.topic')}</p><span class="topic">${escape(topic)}</span><div class="bomb-orb" aria-hidden="true">💣</div><div class="bomb-starter starter">${starter ? `${avatar(starter)}<strong>${t('bomb.starter', { name: escape(starter.name) })}</strong>` : ''}</div><p class="helper">${t('bomb.tick')}</p></section>`;
 }
 
 function sameWaveGameView(g: SameWaveGame): string {
@@ -371,7 +379,7 @@ function render(resetScroll = false): void {
   const content = data.activeGame ? activeGameView(data.activeGame) : categoryScreen ? categoryScreenView() : screen === 'stats' ? statsView() : screen === 'setup' ? setup() : catalogView();
   const nav = data.activeGame ? '' : `<button data-action="catalog" class="nav-btn ${screen === 'catalog' ? 'active' : ''}" aria-label="${t('nav.catalog')}"><span class="nav-icon" aria-hidden="true">⌂</span><span class="nav-label">${t('nav.catalog')}</span></button><button data-action="stats" class="nav-btn ${screen === 'stats' ? 'active' : ''}" aria-label="${t('nav.stats')}"><span class="nav-icon" aria-hidden="true">↗</span><span class="nav-label">${t('nav.stats')}</span></button>`;
   const mark = `<svg class="brand-icon" viewBox="0 0 48 48" aria-hidden="true"><circle class="brand-icon-ring" cx="24" cy="24" r="17"/><circle class="brand-icon-dot dot-one" cx="17" cy="18" r="3.5"/><circle class="brand-icon-dot dot-two" cx="31" cy="18" r="3.5"/><circle class="brand-icon-dot dot-three" cx="24" cy="31" r="3.5"/></svg>`;
-  root.innerHTML = `<main class="shell ${data.activeGame ? 'gameplay' : 'catalog-shell'}"><header><button class="brand" data-action="catalog" aria-label="Pocket Circle"><span class="brand-mark">${mark}</span><span class="brand-word"><strong>POCKET CIRCLE</strong><small>LOCAL PARTY GAMES</small></span></button><div class="header-actions">${nav}<button data-action="language" class="language" aria-label="${t(data.language === 'it' ? 'language.switchToEnglish' : 'language.switchToItalian')}">${data.language.toUpperCase()}</button>${button('rules', '?', 'icon-btn', false, t('rules.open'))}</div></header>${error ? `<div class="error-banner" role="alert">${escape(error)}${!storageReady ? button('retry', t('action.retry'), 'text-btn') : ''}</div>` : ''}${content}<footer><span>◈</span> ${t('footer.onePhone')}<span>·</span>${t('footer.onDevice')}</footer></main>${dialogView()}`;
+  root.innerHTML = `<main class="shell ${data.activeGame ? 'gameplay' : 'catalog-shell'}"><header><button class="brand" data-action="catalog" aria-label="Pocket Circle"><span class="brand-mark">${mark}</span><span class="brand-word"><strong>POCKET CIRCLE</strong><small>LOCAL PARTY GAMES</small></span></button><div class="header-actions">${nav}<button data-action="language" class="language" aria-label="${t(data.language === 'it' ? 'language.switchToEnglish' : 'language.switchToItalian')}">${data.language.toUpperCase()}</button>${button('rules', '?', 'icon-btn', false, t('rules.open'))}</div></header>${error ? `<div class="error-banner" role="alert">${escape(error)}${button('retry', t('action.retry'), 'text-btn')}</div>` : ''}${content}<footer><span>◈</span> ${t('footer.onePhone')}<span>·</span>${t('footer.onDevice')}</footer></main>${dialogView()}`;
   if (resetScroll) resetScrollToTop();
   root.querySelector('[data-action="rules"]')?.setAttribute('aria-label', t('rules.open'));
   const modal = root.querySelector('dialog');
@@ -392,21 +400,53 @@ function scheduleBomb(): void {
   const tick = () => {
     const active = data.activeGame;
     if (!active || active.gameId !== 'bomb' || active.phase !== 'playing') { if (bombTimer !== null) window.clearInterval(bombTimer); bombTimer = null; return; }
-    const timer = root.querySelector<HTMLElement>('#bomb-timer');
-    if (timer) timer.textContent = bombRemaining(active.deadlineAt);
-    if (bombExpired(active)) { if (bombTimer !== null) window.clearInterval(bombTimer); bombTimer = null; void finishBomb(); }
+    if (bombExpired(active) && bombExpiryAttemptedGameId !== active.id) {
+      if (busy || bombExpiryInFlight) return;
+      if (bombTimer !== null) window.clearInterval(bombTimer);
+      bombTimer = null;
+      bombExpiryAttemptedGameId = active.id;
+      void finishBomb(active.deadlineAt);
+    }
   };
   bombTimer = window.setInterval(tick, 250);
   tick();
 }
 
-async function finishBomb(): Promise<void> {
-  await change(next => {
-    const game = next.activeGame;
-    if (!game || game.gameId !== 'bomb' || !bombExpired(game)) return;
-    resolveBomb(game);
-  });
-  navigator.vibrate?.([80, 40, 120]);
+function clearBombExplosionFeedback(): void {
+  bombExplosionFeedback = false;
+  if (bombExplosionFeedbackTimer !== null) window.clearTimeout(bombExplosionFeedbackTimer);
+  bombExplosionFeedbackTimer = null;
+}
+
+function showBombExplosionFeedback(): void {
+  clearBombExplosionFeedback();
+  bombExplosionFeedback = true;
+  render();
+  bombExplosionFeedbackTimer = window.setTimeout(() => {
+    bombExplosionFeedback = false;
+    bombExplosionFeedbackTimer = null;
+    if (data.activeGame?.gameId === 'bomb' && data.activeGame.phase === 'assigning') render();
+  }, 700);
+}
+
+async function finishBomb(deadlineAt: number): Promise<void> {
+  if (bombExpiryInFlight) return;
+  bombExpiryInFlight = true;
+  let expired = false;
+  try {
+    const saved = await change(next => {
+      const game = next.activeGame;
+      if (!game || game.gameId !== 'bomb' || game.deadlineAt !== deadlineAt || !bombExpired(game)) return;
+      resolveBomb(game);
+      expired = true;
+    });
+    if (!saved || !expired) return;
+    playBombExplosion();
+    navigator.vibrate?.([80, 40, 120]);
+    showBombExplosionFeedback();
+  } finally {
+    bombExpiryInFlight = false;
+  }
 }
 
 function readAvatarPhoto(file: File): Promise<string> {
@@ -471,6 +511,7 @@ root.addEventListener('submit', async e => {
 root.addEventListener('click', async e => {
   const target = (e.target as HTMLElement).closest<HTMLButtonElement>('button');
   if (!target || target.disabled || busy) return;
+  if (data.activeGame?.gameId === 'bomb') primeBombAudio();
   const { action, player, avatar: pick, accuse, category, game: gameId, bombCategory, waveChoice } = target.dataset;
   if (gameId && gameCatalog.list().some(game => game.id === gameId)) {
     await change(next => { next.selectedGameId = gameId as GameId; });
@@ -560,7 +601,7 @@ root.addEventListener('click', async e => {
     case 'plus': await change(d => { d.settings.impostor.impostors = Math.min(maxImpostors(d.selectedIds.length), d.settings.impostor.impostors + 1); d.settings.impostor.maxAttempts = clampAttempts(d.selectedIds.length, d.settings.impostor.impostors, d.settings.impostor.maxAttempts); }); break;
     case 'attempt-minus': await change(d => { d.settings.impostor.maxAttempts = clampAttempts(d.selectedIds.length, d.settings.impostor.impostors, d.settings.impostor.maxAttempts - 1); }); break;
     case 'attempt-plus': await change(d => { d.settings.impostor.maxAttempts = clampAttempts(d.selectedIds.length, d.settings.impostor.impostors, d.settings.impostor.maxAttempts + 1); }); break;
-    case 'start': categoryScreen = false; revealed = false; await change(d => {
+    case 'start': categoryScreen = false; revealed = false; clearBombExplosionFeedback(); bombExpiryAttemptedGameId = null; if (data.selectedGameId === 'bomb') primeBombAudio(); await change(d => {
       const players = d.players.filter(player => d.selectedIds.includes(player.id));
       if (d.selectedGameId === 'bomb') {
         const category = d.settings.bomb.category;
@@ -570,7 +611,7 @@ root.addEventListener('click', async e => {
         d.activeGame = createSameWaveGame(players, SAME_WAVE_PROMPTS[Math.floor(Math.random() * SAME_WAVE_PROMPTS.length)]);
       } else d.activeGame = createGame(players, d.settings.impostor);
     }); resetScrollToTop(); break;
-    case 'again': categoryScreen = false; revealed = false; await change(d => {
+    case 'again': categoryScreen = false; revealed = false; clearBombExplosionFeedback(); bombExpiryAttemptedGameId = null; if (data.activeGame?.gameId === 'bomb') primeBombAudio(); await change(d => {
       const game = d.activeGame;
       if (!game) return;
       if (game.gameId === 'bomb') {
@@ -580,7 +621,7 @@ root.addEventListener('click', async e => {
       } else if (game.gameId === 'same-wave') d.activeGame = rematchSameWave(game, SAME_WAVE_PROMPTS);
       else d.activeGame = createGame(game.players, d.settings.impostor, game.entry.word);
     }); resetScrollToTop(); break;
-    case 'bomb-loser': await change(d => {
+    case 'bomb-loser': clearBombExplosionFeedback(); await change(d => {
       const game = d.activeGame;
       if (!game || game.gameId !== 'bomb' || game.phase !== 'assigning' || !target.dataset.bombLoser) return;
       assignBombLoser(game, target.dataset.bombLoser);
@@ -591,7 +632,7 @@ root.addEventListener('click', async e => {
     case 'vote': case 'discuss': await change(d => { const game = d.activeGame; if (game?.gameId === 'impostor') game.phase = action; }); resetScrollToTop(); break;
     case 'result': await change(d => { const g = d.activeGame; if (!g || g.gameId !== 'impostor') return; const resolution = resolveVote(g); if (resolution === 'result') { g.phase = 'result'; if (!g.scoreRecorded) { d.players = recordActiveGameResult(d.players, g); g.scoreRecorded = true; } } else if (resolution === 'continue') g.phase = 'discuss'; }); navigator.vibrate?.([30, 40, 30]); resetScrollToTop(); break;
     case 'exit': revealed = false; dialog = 'exit'; editingPlayerId = null; deletingPlayerId = null; photoError = ''; render(); break;
-    case 'home': categoryScreen = false; dialog = null; revealed = false; screen = 'setup'; location.hash = 'setup'; await change(d => { d.activeGame = null; }); resetScrollToTop(); break;
+    case 'home': categoryScreen = false; dialog = null; revealed = false; clearBombExplosionFeedback(); bombExpiryAttemptedGameId = null; screen = 'setup'; location.hash = 'setup'; await change(d => { d.activeGame = null; }); resetScrollToTop(); break;
   }
 });
 // Never persist an exposed card: reloads, app switching and history restore conceal it.
@@ -610,6 +651,8 @@ async function init() {
   try {
     const saved = await loadData<ActiveGame>();
     if (saved) data = saved;
+    bombExpiryAttemptedGameId = null;
+    clearBombExplosionFeedback();
     if (data.activeGame) {
       const migrated = structuredClone(data);
       const active = migrated.activeGame!;

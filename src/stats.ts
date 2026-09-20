@@ -39,7 +39,7 @@ export function recordWinners(players: Player[], gameId: GameId, participantIds:
 
 /** Dispatch score recording by discriminant. Caller persists scoreRecorded with the same snapshot. */
 export function recordActiveGameResult(players: Player[], game: ActiveGame): Player[] {
-  if (game.scoreRecorded) return structuredClone(players);
+  if (game.phase !== 'result' || game.scoreRecorded) return structuredClone(players);
   if (game.gameId === 'impostor') return recordGameResult(players, game);
   return recordWinners(players, game.gameId, game.players.map((player) => player.id), game.winnerIds);
 }

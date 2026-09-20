@@ -222,9 +222,12 @@ footer > span:first-child { color: var(--violet); }
 .live-card h1 { font-size: clamp(32px, 8vw, 48px); }
 .topic { display: block; margin: var(--space-4) 0; color: var(--lime); font-size: clamp(25px, 7vw, 38px); font-weight: 900; line-height: 1.08; }
 .bomb-orb { display: grid; width: 150px; height: 150px; margin: var(--space-5) auto; place-items: center; border: 2px solid var(--coral); border-radius: 50%; background: var(--surface-raised); box-shadow: 0 0 0 8px var(--surface-soft); font-size: 52px; }
-.bomb-timer { display: grid; min-width: 132px; margin: var(--space-3) auto var(--space-4); padding: var(--space-3) var(--space-4); place-items: center; border: 2px solid var(--coral); border-radius: var(--radius-md); color: var(--coral); font-size: 40px; font-weight: 900; line-height: 1; }
+.bomb-starter { margin: var(--space-5) 0; border-color: var(--coral); }
+.bomb-starter strong { color: var(--coral); }
 .bomb-assign .players { grid-template-columns: 1fr; }
 .bomb-assign .player { border-color: var(--coral); }
+.bomb-explosion-feedback { border-color: var(--coral); }
+.bomb-explosion-symbol { color: var(--coral); animation: bomb-explosion .7s ease-out both; }
 .wave-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); margin: var(--space-5) 0; }
 .wave-option { min-height: 76px; padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-raised); color: var(--text); font-weight: 800; }
 .wave-option:hover { border-color: var(--cyan); }
@@ -275,6 +278,7 @@ dialog::backdrop { background: var(--bg); opacity: .88; }
 .privacy { padding-top: var(--space-4); border-top: 1px solid var(--border); }
 
 @keyframes enter { from { opacity: .2; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes bomb-explosion { 0% { opacity: .3; transform: scale(.55); } 45% { opacity: 1; transform: scale(1.25); } 100% { opacity: 1; transform: scale(1); } }
 @media (min-width: 700px) {
   .shell { padding-top: var(--space-4); }
   .game-catalog { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; }

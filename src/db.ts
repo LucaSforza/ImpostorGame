@@ -21,6 +21,7 @@ export interface PlayerStats {
   impostor: ImpostorStats;
   bomb: GameStats;
   sameWave: GameStats;
+  whoAmI: GameStats;
 }
 
 export interface Player {
@@ -45,10 +46,15 @@ export interface SameWaveSettings {
   category: string;
 }
 
+export interface WhoAmISettings {
+  category: 'all';
+}
+
 export interface SettingsByGame {
   impostor: GameSettings;
   bomb: BombSettings;
   sameWave: SameWaveSettings;
+  whoAmI: WhoAmISettings;
 }
 
 export interface AppData<T = unknown> {
@@ -95,7 +101,7 @@ function isRecord(value: unknown): value is Record<string, unknown> { return typ
 
 export function emptyGameStats(): GameStats { return { gamesPlayed: 0, wins: 0, losses: 0 }; }
 export function emptyPlayerStats(): PlayerStats {
-  return { impostor: { ...emptyGameStats(), citizenWins: 0, citizenLosses: 0, impostorWins: 0, impostorLosses: 0 }, bomb: emptyGameStats(), sameWave: emptyGameStats() };
+  return { impostor: { ...emptyGameStats(), citizenWins: 0, citizenLosses: 0, impostorWins: 0, impostorLosses: 0 }, bomb: emptyGameStats(), sameWave: emptyGameStats(), whoAmI: emptyGameStats() };
 }
 function isCounter(value: unknown): value is number { return Number.isSafeInteger(value) && (value as number) >= 0; }
 function isNonEmptyString(value: unknown): value is string { return typeof value === 'string' && value.trim().length > 0; }
@@ -112,7 +118,7 @@ function isImpostorStats(value: unknown): value is ImpostorStats {
     && value.citizenWins + value.impostorWins === value.wins
     && value.citizenLosses + value.impostorLosses === value.losses;
 }
-function isPlayerStats(value: unknown): value is PlayerStats { return isRecord(value) && isImpostorStats(value.impostor) && isGameStats(value.bomb) && isGameStats(value.sameWave); }
+function isPlayerStats(value: unknown): value is PlayerStats { return isRecord(value) && isImpostorStats(value.impostor) && isGameStats(value.bomb) && isGameStats(value.sameWave) && (value.whoAmI === undefined || isGameStats(value.whoAmI)); }
 
 function isLegacyStats(value: unknown): value is Record<string, unknown> {
   if (!isRecord(value)) return false;
@@ -136,7 +142,7 @@ function legacyStats(value: unknown): PlayerStats {
 }
 function normalizeStats(value: unknown): PlayerStats {
   if (value === undefined) return emptyPlayerStats();
-  if (isPlayerStats(value)) return structuredClone(value);
+  if (isPlayerStats(value)) return { ...structuredClone(value), whoAmI: isGameStats(value.whoAmI) ? structuredClone(value.whoAmI) : emptyGameStats() };
   if (isLegacyStats(value)) return legacyStats(value);
   throw new Error('Invalid player statistics');
 }
@@ -217,12 +223,37 @@ function isSameWaveGameSnapshot(value: Record<string, unknown>): boolean {
   const winnerIds = value.winnerIds as string[];
   return winnerIds.length === expectedWinnerIds.length && winnerIds.every((id) => expectedWinnerIds.includes(id));
 }
+function isWhoAmIGameSnapshot(value: Record<string, unknown>): boolean {
+  const players = value.players;
+  if (!isPlayerList(players, 3, 20) || typeof value.id !== 'string' || !isRecord(value.identityByPlayerId)) return false;
+  const playerIds = players.map((player) => player.id as string);
+  const identities = value.identityByPlayerId as Record<string, unknown>;
+  const validIdentity = (identity: unknown): boolean => isRecord(identity) && isNonEmptyString(identity.id) && isNonEmptyString(identity.label) && isNonEmptyString(identity.labelEn);
+  const assigned = playerIds.map((id) => identities[id]);
+  if (!playerIds.every((id) => validIdentity(identities[id])) || Object.keys(identities).length !== playerIds.length
+    || new Set(assigned.map((identity) => (identity as Record<string, unknown>).id)).size !== assigned.length
+    || typeof value.phase !== 'string' || !['reveal', 'playing', 'result'].includes(value.phase)
+    || !isCounter(value.turnIndex) || value.turnIndex >= players.length
+    || !hasPlayerIds(value.eliminatedIds, players) || !hasPlayerIds(value.winnerIds, players)
+    || (value.scoreRecorded !== undefined && typeof value.scoreRecorded !== 'boolean')) return false;
+  const eliminatedIds = value.eliminatedIds as string[];
+  const winnerIds = value.winnerIds as string[];
+  const buzzedId = value.buzzedId;
+  if (buzzedId !== null && (typeof buzzedId !== 'string' || !playerIds.includes(buzzedId) || eliminatedIds.includes(buzzedId))) return false;
+  if (value.phase === 'reveal') return eliminatedIds.length === 0 && winnerIds.length === 0 && buzzedId === null;
+  if (value.phase === 'playing') return winnerIds.length === 0 && eliminatedIds.length < players.length
+    && !eliminatedIds.includes(playerIds[value.turnIndex as number]) && (buzzedId === null || buzzedId === playerIds[value.turnIndex as number]);
+  return buzzedId === null && (winnerIds.length === 1
+    ? !eliminatedIds.includes(winnerIds[0])
+    : winnerIds.length === 0 && eliminatedIds.length === players.length);
+}
 function isActiveGame(value: unknown): boolean {
   if (value === null) return true;
   if (!isRecord(value)) return false;
   if (value.gameId === undefined || value.gameId === 'impostor') return isImpostorGameSnapshot(value);
   if (value.gameId === 'bomb') return isBombGameSnapshot(value);
   if (value.gameId === 'same-wave') return isSameWaveGameSnapshot(value);
+  if (value.gameId === 'who-am-i') return isWhoAmIGameSnapshot(value);
   return false;
 }
 function isBombCategory(value: unknown): value is string {
@@ -235,7 +266,8 @@ function isSettingsByGame(value: unknown, selectedCount: number): value is Setti
   const maxAllowedImpostors = Math.max(1, Math.floor((selectedCount - 1) / 2));
   return Number.isInteger(impostors) && (impostors as number) >= 1 && (impostors as number) <= maxAllowedImpostors
     && (settings.maxAttempts === undefined || (isCounter(settings.maxAttempts) && settings.maxAttempts >= Math.max(1, impostors as number) && settings.maxAttempts <= Math.max(1, selectedCount)))
-    && isCategorySelection(settings.category) && isBombCategory(value.bomb.category) && value.sameWave.category === 'all';
+    && isCategorySelection(settings.category) && isBombCategory(value.bomb.category) && value.sameWave.category === 'all'
+    && (value.whoAmI === undefined || (isRecord(value.whoAmI) && value.whoAmI.category === 'all'));
 }
 function isSnapshot<T>(value: unknown): value is AppData<T> {
   if (!isRecord(value) || !Array.isArray(value.players) || !value.players.every(isPlayer) || !Array.isArray(value.selectedIds) || !value.selectedIds.every((id) => typeof id === 'string')) return false;
@@ -244,7 +276,7 @@ function isSnapshot<T>(value: unknown): value is AppData<T> {
     || new Set(value.selectedIds).size !== value.selectedIds.length || !value.selectedIds.every((id) => playerIds.has(id))) return false;
   if (value.language !== 'it' && value.language !== 'en') return false;
   if (!isActiveGame(value.activeGame)) return false;
-  if (value.selectedGameId !== undefined && value.selectedGameId !== 'impostor' && value.selectedGameId !== 'bomb' && value.selectedGameId !== 'same-wave') return false;
+  if (value.selectedGameId !== undefined && value.selectedGameId !== 'impostor' && value.selectedGameId !== 'bomb' && value.selectedGameId !== 'same-wave' && value.selectedGameId !== 'who-am-i') return false;
   if (isSettingsByGame(value.settings, value.selectedIds.length)) return true;
   const settings = value.settings;
   if (isRecord(settings) && ('impostor' in settings || 'bomb' in settings || 'sameWave' in settings)) return false;
@@ -267,6 +299,7 @@ function normalizeSnapshot<T>(stored: unknown): AppData<T> {
     impostor: { ...impostor, maxAttempts: Math.max(minimumAttempts, Math.min(maximumAttempts, configuredAttempts)) },
     bomb: legacySettings ? { category: 'all' } : structuredClone((source.settings as SettingsByGame).bomb),
     sameWave: legacySettings ? { category: 'all' } : structuredClone((source.settings as SettingsByGame).sameWave),
+    whoAmI: legacySettings || !(source.settings as Partial<SettingsByGame>).whoAmI ? { category: 'all' } : structuredClone((source.settings as SettingsByGame).whoAmI),
   };
   const players = (source.players as Record<string, unknown>[]).map((player) => ({ ...player, stats: normalizeStats(player.stats) })) as Player[];
   return { players, selectedIds: [...(source.selectedIds as string[])], selectedGameId: (source.selectedGameId as GameId | undefined) ?? 'impostor', settings, language: source.language as Locale, activeGame: normalizeActiveGame(source.activeGame as T | null) };

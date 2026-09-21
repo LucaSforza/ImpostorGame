@@ -1,8 +1,8 @@
 # Catalog game rules
 
-Pocket Circle offers Impostore, Bomba, and Stessa Onda. Saved player profiles are shared across all games. Each completed session records per-game statistics once; exiting before result records nothing.
+Pocket Circle offers Impostore, Bomba, Stessa Onda, and Chi sono?. Saved player profiles are shared across all games. Each completed session records per-game statistics once; exiting before result records nothing.
 
-Every new game and rematch randomly chooses the first player. The session rotates its participant order to put that player first, preserving the other players' relative circular order and leaving the saved roster unchanged. The choice is independent each round, so the same person can legitimately start twice. The order is persisted: reload, language changes, and screen rendering do not draw a new starter. In Impostore the same player starts the private reveal and discussion; in Bomba the screen names who starts answering; in Stessa Onda that player makes the first private choice.
+Every new game and rematch randomly chooses the first player. The session rotates its participant order to put that player first, preserving the other players' relative circular order and leaving the saved roster unchanged. The choice is independent each round, so the same person can legitimately start twice. The order is persisted: reload, language changes, and screen rendering do not draw a new starter. In Impostore the same player starts the private reveal and discussion; in Bomba the screen names who starts answering; in Stessa Onda that player makes the first private choice; in Chi sono? that player first views the other identities and asks the first question.
 
 ## Impostore
 
@@ -48,6 +48,14 @@ The explosion sound is generated locally with Web Audio and enabled by a user ge
 3. App groups matching answers after last choice.
 4. Members of largest group of at least two win. All groups tied for largest win. If all answers are unique, nobody wins.
 
+## Chi sono?
+
+1. Select 3–20 players. App assigns each participant a unique bilingual identity: person, fictional character, or object.
+2. Pass phone privately. Each player sees and memorizes every other participant's identity, never their own. Losing visibility, switching language, or leaving page hides exposed identities.
+3. In persisted random order, current player asks group one yes/no question. Group answers aloud; app validates no speech. Player may pass turn without guessing.
+4. Current player may buzz once and say answer aloud. App reveals their identity; group marks answer correct or wrong. Correct answer ends game with that player as sole winner. Wrong answer eliminates player and play continues with next active participant. If everyone guesses wrong, game ends without winner.
+5. Rematch keeps participants, chooses new starter, and deals identities unused in previous round when enough content exists.
+
 ## Player statistics
 
-When a result is revealed, every participant receives exactly one recorded game for that `GameId`. Winners receive one win and other participants one loss; Stessa Onda can produce no winners. Overall games, wins, losses, and rate are derived from per-game values. Impostore also records citizen/impostor role splits. Existing single-game snapshots migrate into Impostore values.
+When a result is revealed, every participant receives exactly one recorded game for that `GameId`. Winners receive one win and other participants one loss; Stessa Onda and Chi sono? can produce no winners. Overall games, wins, losses, and rate are derived from per-game values. Impostore also records citizen/impostor role splits. Existing snapshots gain zeroed Chi sono? counters and default settings in memory.

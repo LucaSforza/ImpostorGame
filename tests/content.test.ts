@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BOMB_CATEGORIES, BOMB_CATEGORY_IDS, BOMB_CATEGORY_LABELS, BOMB_PROMPTS } from "../src/bomb-content";
 import { SAME_WAVE_PROMPTS } from "../src/same-wave-content";
+import { WHO_AM_I_IDENTITIES } from "../src/who-am-i-content";
 
 const unique = (values: readonly string[]) => new Set(values).size === values.length;
 
@@ -38,6 +39,17 @@ describe("Stessa Onda content catalog", () => {
       expect(prompt.optionsEn).toHaveLength(4);
       expect(prompt.options.every((option) => option.trim())).toBe(true);
       expect(prompt.optionsEn.every((option) => option.trim())).toBe(true);
+    }
+  });
+});
+
+describe("Chi sono? content catalog", () => {
+  it("contains sixty complete bilingual identities with stable unique IDs", () => {
+    expect(WHO_AM_I_IDENTITIES).toHaveLength(60);
+    expect(unique(WHO_AM_I_IDENTITIES.map((identity) => identity.id))).toBe(true);
+    for (const identity of WHO_AM_I_IDENTITIES) {
+      expect(identity.label.trim()).not.toBe("");
+      expect(identity.labelEn.trim()).not.toBe("");
     }
   });
 });

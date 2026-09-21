@@ -35,6 +35,7 @@ classDiagram
     +GameStats impostor
     +GameStats bomb
     +GameStats sameWave
+    +GameStats whoAmI
     +ImpostorRoleStats impostorRoles
   }
   class GameStats {
@@ -76,6 +77,14 @@ classDiagram
     +Record picks
     +string[] winnerIds
   }
+  class WhoAmIGame {
+    +Record identityByPlayerId
+    +string phase
+    +number turnIndex
+    +string buzzedId
+    +string[] eliminatedIds
+    +string[] winnerIds
+  }
   class WordEntry {
     +string word
     +string hint
@@ -85,20 +94,21 @@ classDiagram
   }
   AppData "1" o-- "0..*" Player : reusable profiles
   Player "1" *-- "1" PlayerStats : stats
-  PlayerStats "1" *-- "3" GameStats : per game
+  PlayerStats "1" *-- "4" GameStats : per game
   AppData "1" o-- "0..1" ActiveGame : activeGame
   ActiveGame <|-- ImpostorGame
   ActiveGame <|-- BombGame
   ActiveGame <|-- SameWaveGame
+  ActiveGame <|-- WhoAmIGame
   ActiveGame "1" o-- "2..20" Player : participants
   ImpostorGame "1" *-- "1" WordEntry : entry
 ```
 
 `AppData` is the complete snapshot written under `current`. `activeGame` may be `null`; its `gameId` selects one union member and allows exact resume after reload. Every session carries `scoreRecorded`, preventing duplicate updates after re-renders or reloads. Bomb uses an absolute deadline so elapsed time survives reload without persisting a timer handle; expiry opens adjudication and loser/winners remain empty until group selection. Player totals are derived from per-game records. Impostore retains its role breakdown. Locale and transient reveal flags remain outside individual game records.
 
-`loadData()` validates and migrates snapshots at the boundary. Legacy counters become Impostore statistics; legacy settings become `settings.impostor`; legacy active games gain `gameId: "impostor"`; selected game defaults to Impostore. New writes use only target shape. Malformed or unsupported snapshots are deleted and treated as absent. No IndexedDB version bump is needed because compatibility normalization operates on single stored snapshot value.
+`loadData()` validates and migrates snapshots at boundary. Legacy counters become Impostore statistics; legacy settings become `settings.impostor`; legacy active games gain `gameId: "impostor"`; selected game defaults to Impostore. Snapshots predating Chi sono? gain zero counters and default settings. New writes use only target shape. Malformed or unsupported snapshots are deleted and treated as absent. No IndexedDB version bump is needed because compatibility normalization operates on single stored snapshot value.
 
-Saved game content is validated structurally and remains independent of later editorial changes to the catalog. Missing supported Impostore attempt settings default to the minimum rather than becoming `NaN`. Impostore wins and losses must match their role-specific sums. Stessa Onda picks must belong exactly to the players before `currentPlayerIndex`; completed sessions must contain every pick and the correct largest-group winners, including ties or no match.
+Saved game content is validated structurally and remains independent of later editorial changes to catalog. Missing supported Impostore attempt settings default to minimum rather than becoming `NaN`. Impostore wins and losses must match role-specific sums. Stessa Onda picks must match player progress and computed winners. Chi sono? requires one unique bilingual identity per player plus phase-consistent current turn, buzz, eliminations, and winner.
 
 ## Data scope
 

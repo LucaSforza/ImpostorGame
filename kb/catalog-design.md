@@ -41,6 +41,7 @@ classDiagram
     +GameStats impostor
     +GameStats bomb
     +GameStats sameWave
+    +GameStats whoAmI
   }
   class GameStats {
     +number gamesPlayed
@@ -57,19 +58,21 @@ classDiagram
   class ImpostorGame
   class BombGame
   class SameWaveGame
+  class WhoAmIGame
 
-  GameCatalog "1" o-- "3" GameDefinition : offers
+  GameCatalog "1" o-- "4" GameDefinition : offers
   AppData "1" o-- "0..*" Player : reusable profiles
   Player "1" *-- "1" PlayerStats : owns
-  PlayerStats "1" *-- "3" GameStats : per game
+  PlayerStats "1" *-- "4" GameStats : per game
   AppData "1" o-- "0..1" ActiveGame : resumes
   ActiveGame <|-- ImpostorGame
   ActiveGame <|-- BombGame
   ActiveGame <|-- SameWaveGame
+  ActiveGame <|-- WhoAmIGame
   ActiveGame "1" o-- "2..20" Player : participants
 ```
 
-Profiles belong to `AppData`, not to any game. Every session snapshots participating profiles for stable names and avatars, while result recording updates canonical profiles by ID. Overall totals and win percentage are derived by summing three `GameStats` records; no duplicate aggregate counter is persisted.
+Profiles belong to `AppData`, not to any game. Every session snapshots participating profiles for stable names and avatars, while result recording updates canonical profiles by ID. Overall totals and win percentage are derived by summing four `GameStats` records; no duplicate aggregate counter is persisted.
 
 ## Catalog games
 
@@ -89,13 +92,17 @@ Three to twenty players receive same light-hearted prompt with four localized ch
 
 Content is data-driven through stable bilingual `SameWavePrompt` records. A rematch keeps participants and selects a different prompt when possible.
 
+### Chi sono?
+
+Three to twenty players receive unique bilingual identities drawn from people, fictional characters, and objects. During private pass-the-phone reveal, each participant sees every identity except their own. Players then rotate through yes/no questions. Current player may buzz once, say answer aloud, and let group mark it correct or wrong after app reveals identity. Correct guess wins immediately; wrong guess eliminates player; all wrong produces no winner. Rematch keeps participants and excludes prior identities when deck has enough alternatives.
+
 ## Statistics screen
 
 `#stats` is a separate application screen, reachable from catalog and game setup when no session is active. It shows:
 
 - catalog-wide games played, wins, losses, and win rate;
 - one card per saved player with overall totals;
-- per-game played/won/lost values for Impostore, Bomba, and Stessa Onda;
+- per-game played/won/lost values for Impostore, Bomba, Stessa Onda, and Chi sono?;
 - Impostore role split for migrated and newly recorded results;
 - empty states for new profiles and an entirely empty roster.
 
@@ -121,7 +128,7 @@ Pocket Circle uses one visual language on every route and in every game. Catalog
 - Primary action is lime, solid, and unique per view. Secondary actions are dark raised surfaces with visible borders. Destructive actions use coral only where needed.
 - Cards use the same surface, border, 18–24 px radius, and restrained shadow. Game art may be colorful but copy always sits on an opaque high-contrast surface, never directly on a busy image.
 - Inputs, chips, player rows, stat tiles, live-game panels, and dialogs reuse shared surface/border/text tokens.
-- Active game screens keep the normal dark shell. Impostore, Bomba, and Stessa Onda do not introduce full-screen red, orange, or unrelated palettes.
+- Active game screens keep normal dark shell. Games do not introduce full-screen unrelated palettes.
 - Motion is short and functional; `prefers-reduced-motion` disables decorative animation.
 
 ### Contextual help
@@ -129,7 +136,7 @@ Pocket Circle uses one visual language on every route and in every game. Catalog
 The header help action is contextual, never an Impostore-only global dialog:
 
 - catalog: explains Pocket Circle, shared local profiles, pass-and-play flow, privacy, and how to choose a game;
-- game setup, live round, and result: explains rules and scoring for the selected or active game (`Impostore`, `Bomba`, or `Stessa Onda`);
+- game setup, live round, and result: explains rules and scoring for selected or active game;
 - statistics: explains catalog-wide totals, per-game rows, win/loss meaning, and local-only storage.
 
 Every help variant is complete in Italian and English, has a context-specific title and accessible dialog name, and may be opened or closed without altering the route or game state.
@@ -139,6 +146,7 @@ Every help variant is complete in Italian and English, has a context-specific ti
 - Impostore: violet identifier.
 - Bomba: coral identifier, limited to bomb graphic and urgent state.
 - Stessa Onda: cyan-violet identifier.
+- Chi sono?: amber-violet identifier.
 
 These identifiers may decorate an eyebrow, icon, or card edge. Lime remains global action/focus color. This section is normative: future UI changes extend these rules instead of adding another visual theme.
 

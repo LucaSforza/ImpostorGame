@@ -8,11 +8,12 @@ export interface ImpostorRoleTotals { citizenWins: number; citizenLosses: number
 
 function gameStats(stats: PlayerStats, gameId: GameId): GameStats {
   if (gameId === 'impostor') return stats.impostor;
+  if (gameId === 'who-am-i') return stats.whoAmI;
   return stats[gameId === 'same-wave' ? 'sameWave' : 'bomb'];
 }
 function cloneStats(value: PlayerStats | undefined): PlayerStats { return structuredClone(value ?? emptyPlayerStats()); }
 export function totalStats(stats: PlayerStats): OverallStats {
-  const games = (['impostor', 'bomb', 'same-wave'] as const).map((id) => gameStats(stats, id));
+  const games = (['impostor', 'bomb', 'same-wave', 'who-am-i'] as const).map((id) => gameStats(stats, id));
   const gamesPlayed = games.reduce((sum, value) => sum + value.gamesPlayed, 0);
   const wins = games.reduce((sum, value) => sum + value.wins, 0);
   const losses = games.reduce((sum, value) => sum + value.losses, 0);

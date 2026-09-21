@@ -3,6 +3,7 @@ import { categoryLabel, type Locale } from './i18n';
 import { isCategorySelection, normalizeCategory, selectedCategoryIds, words, type WordEntry } from './words';
 import type { BombGame } from './bomb';
 import type { SameWaveGame } from './same-wave';
+import type { WhoAmIGame } from './who-am-i';
 
 export interface ImpostorGame {
   gameId: 'impostor';
@@ -23,7 +24,7 @@ export interface ImpostorGame {
 }
 
 export type Game = ImpostorGame;
-export type ActiveGame = ImpostorGame | BombGame | SameWaveGame;
+export type ActiveGame = ImpostorGame | BombGame | SameWaveGame | WhoAmIGame;
 export interface LocalizedEntry { word: string; hint: string; category: string; }
 export function maxImpostors(count: number): number { return Math.max(1, Math.floor((count - 1) / 2)); }
 export function minAttempts(_playerCount: number, impostorCount: number): number { return Math.max(1, impostorCount); }

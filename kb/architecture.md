@@ -12,19 +12,20 @@ The multi-game target keeps one shell and one persisted snapshot. `GameCatalog` 
 - `src/game.ts` owns the `Game` model, random word selection, role assignment, localized word/hint/category projection, voting-session bounds, one-candidate vote resolution, candidate elimination, progressive impostor discovery, the crew win condition, and pure player-stat updates for completed games.
 - `src/bomb.ts` owns Bomb prompts, deadline creation, expiry, group adjudication, and result projection.
 - `src/same-wave.ts` owns Stessa Onda prompts, private selections, grouping, and winner resolution.
+- `src/who-am-i.ts` owns unique identity dealing, private other-identity views, turn rotation, buzz adjudication, elimination, and winner resolution; `src/who-am-i-content.ts` owns 60 stable bilingual identities.
 - `src/stats.ts` owns zeroed statistics, legacy conversion, aggregate derivation, invariant checks, and exactly-once result updates.
 - `src/db.ts` defines `AppData`, wraps snapshot reads and writes in IndexedDB, migrates valid legacy snapshots at the boundary, and deletes snapshots that fail supported contracts.
 - `src/i18n.ts` owns the typed locale catalog, interpolation, and localized category labels. UI code passes message keys to `translate()`; it does not carry Italian/English pairs.
 - `src/words.ts` contains stable category IDs and the bilingual `WordEntry` corpus.
 - `src/style.css` contains the single Night Arcade design system used by catalog, setup, all games, dialogs, results, and statistics. Shared CSS custom properties are the only source of color, type, spacing, border, and focus values; game identity is limited to small accents described in [catalog design](catalog-design.md#visual-system-night-arcade).
 
-Header help is resolved from current route plus selected or active game. Catalog, statistics, Impostore, Bomba, and Stessa Onda each provide localized guidance without changing persisted state.
+Header help is resolved from current route plus selected or active game. Catalog, statistics, Impostore, Bomba, Stessa Onda, and Chi sono? each provide localized guidance without changing persisted state.
 
 ## State and language
 
 `AppData` stores shared players, selections, selected catalog game, per-game settings, interface language, and optional `ActiveGame`. `data.language` remains the single locale source. Sessions store language-neutral IDs and bilingual content; switching language re-renders current game consistently.
 
-Each session stores its own participant order, rotated around a randomly chosen starter when created or rematched. The shared roster stays unchanged. `players[0]` starts Bomba and Stessa Onda; Impostore uses the same first participant as `starterId`. Never rerandomize this order when rendering or restoring a session.
+Each session stores its own participant order, rotated around a randomly chosen starter when created or rematched. The shared roster stays unchanged. `players[0]` starts Bomba, Stessa Onda, and Chi sono?; Impostore uses the same first participant as `starterId`. Never rerandomize this order when rendering or restoring a session.
 
 The reveal card is controlled by the module variable `revealed`, which is not part of `AppData` and is never saved. `visibilitychange`, `pagehide`, and `blur` reset it to `false`, so rendering hides the card when the app loses visibility. During the unrevealed state, the card shows character artwork and can be opened with the accessible Reveal button or by swiping upward more than 55 pixels. The local snapshot still contains the active game, including the word entry, role IDs, vote history, and score-recording flag needed to resume after a reload.
 

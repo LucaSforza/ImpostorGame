@@ -10,6 +10,7 @@ const settings = (category = "all"): SettingsByGame => ({
   impostor: { impostors: 1, maxAttempts: 1, category: category as SettingsByGame["impostor"]["category"] },
   bomb: { category: "all" },
   sameWave: { category: "all" },
+  whoAmI: { category: "all" },
 });
 
 afterEach(async () => {
@@ -196,7 +197,7 @@ describe("local game snapshot", () => {
       players: [{ id: "p1", name: "Ada", avatar: "fox", createdAt: 123, stats: { impostor: {}, bomb: {}, sameWave: {} } }],
       selectedIds: ["p1"],
       selectedGameId: "bomb",
-      settings: { impostor: { impostors: 1, maxAttempts: 1, category: "all" }, bomb: { category: "unknown" }, sameWave: { category: "all" } },
+      settings: { impostor: { impostors: 1, maxAttempts: 1, category: "all" }, bomb: { category: "unknown" }, sameWave: { category: "all" }, whoAmI: { category: "all" } },
       language: "en",
       activeGame: { gameId: "bomb" },
     } as unknown as AppData<null>;

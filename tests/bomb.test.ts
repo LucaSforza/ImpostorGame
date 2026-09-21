@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { assignBombLoser, createBombGame, rematchBomb, resolveBomb } from '../src/bomb';
 import type { Player } from '../src/db';
 
-const players = (count: number): Player[] => Array.from({ length: count }, (_, i) => ({ id: `p${i}`, name: `P${i}`, avatar: 'x', createdAt: i, stats: { impostor: { gamesPlayed: 0, wins: 0, losses: 0, citizenWins: 0, citizenLosses: 0, impostorWins: 0, impostorLosses: 0 }, bomb: { gamesPlayed: 0, wins: 0, losses: 0 }, sameWave: { gamesPlayed: 0, wins: 0, losses: 0 } } }));
+const players = (count: number): Player[] => Array.from({ length: count }, (_, i) => ({ id: `p${i}`, name: `P${i}`, avatar: 'x', createdAt: i, stats: { impostor: { gamesPlayed: 0, wins: 0, losses: 0, citizenWins: 0, citizenLosses: 0, impostorWins: 0, impostorLosses: 0 }, bomb: { gamesPlayed: 0, wins: 0, losses: 0 }, sameWave: { gamesPlayed: 0, wins: 0, losses: 0 }, whoAmI: { gamesPlayed: 0, wins: 0, losses: 0 } } }));
 
 describe('Bomb', () => {
   it('moves to manual assignment on expiry without selecting a player', () => {

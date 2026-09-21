@@ -3,6 +3,8 @@ import { emptyPlayerStats, loadData, saveData, type AppData, type ImpostorStats,
 import { createGame, localizeEntry, maxAttempts, minAttempts, maxImpostors, citizensWin, resolveVote, type ActiveGame, type ImpostorGame } from './game';
 import { assignBombLoser, bombExpired, createBombGame, rematchBomb, resolveBomb, type BombGame } from './bomb';
 import { createSameWaveGame, rematchSameWave, submitSameWavePick, type SameWaveGame } from './same-wave';
+import { buzzWhoAmI, createWhoAmIGame, nextWhoAmITurn, rematchWhoAmI, resolveWhoAmIGuess, visibleWhoAmIIdentities, type WhoAmIGame } from './who-am-i';
+import { WHO_AM_I_IDENTITIES } from './who-am-i-content';
 import { BOMB_CATEGORIES, BOMB_PROMPTS, type BombCategoryId } from './bomb-content';
 import { SAME_WAVE_PROMPTS } from './same-wave-content';
 import { playBombExplosion, primeBombAudio } from './bomb-audio';
@@ -45,6 +47,7 @@ import hobbyImage from './assets/categories/hobby.webp';
 import impostorGameImage from './assets/games/impostore.webp';
 import bombGameImage from './assets/games/bomba.webp';
 import sameWaveGameImage from './assets/games/stessa-onda.webp';
+import whoAmIGameImage from './assets/games/who-am-i.webp';
 
 const root = document.querySelector<HTMLDivElement>('#app')!;
 const avatars = [
@@ -78,10 +81,11 @@ const legacyAvatarMap: Record<string, AvatarId> = {
 };
 let data: AppData<ActiveGame> = {
   players: [], selectedIds: [], selectedGameId: 'impostor',
-  settings: { impostor: { impostors: 1, maxAttempts: 1, category: 'all' }, bomb: { category: 'all' }, sameWave: { category: 'all' } },
+  settings: { impostor: { impostors: 1, maxAttempts: 1, category: 'all' }, bomb: { category: 'all' }, sameWave: { category: 'all' }, whoAmI: { category: 'all' } },
   activeGame: null, language: 'it',
 };
 let revealed = false;
+let whoAmIRevealed = false;
 let busy = false;
 let storageReady = false;
 let error = '';
@@ -195,8 +199,8 @@ function impostorSetup(): string {
   <p class="footnote">${count < 3 ? t(3 - count === 1 ? 'setup.morePlayersOne' : 'setup.morePlayersMany', { count: 3 - count }) : t('setup.passSecrets')}</p></section>`;
 }
 
-const gameImages: Record<GameId, string> = { impostor: impostorGameImage, bomb: bombGameImage, 'same-wave': sameWaveGameImage };
-const gameName = (id: GameId) => t(`catalog.${id === 'same-wave' ? 'sameWave' : id}.name` as MessageKey);
+const gameImages: Record<GameId, string> = { impostor: impostorGameImage, bomb: bombGameImage, 'same-wave': sameWaveGameImage, 'who-am-i': whoAmIGameImage };
+const gameName = (id: GameId) => t(`catalog.${id === 'same-wave' ? 'sameWave' : id === 'who-am-i' ? 'whoAmI' : id}.name` as MessageKey);
 
 function catalogView(): string {
   const cards = gameCatalog.list().map(game => `<article class="catalog-card"><img class="catalog-card-image" src="${gameImages[game.id]}" alt=""/><div class="catalog-card-copy"><div class="catalog-card-head"><h2>${gameName(game.id)}</h2><span class="catalog-players">${t('catalog.players', { min: game.minPlayers, max: game.maxPlayers })}</span></div><p>${t(game.descriptionKey as MessageKey)}</p><div class="catalog-meta"><span class="catalog-players">${t('setup.sharedProfiles')}</span><button class="catalog-play" data-game="${game.id}">${t('catalog.play')} →</button></div></div></article>`).join('');
@@ -223,9 +227,14 @@ function sameWaveSetup(): string {
   return `${gameSetupHeader('same-wave')}${setupRoster(3)}<section class="setup">${button('start', `${t('game.start')} <span>↗</span>`, 'primary', data.selectedIds.length < 3 || !storageReady)}</section>`;
 }
 
+function whoAmISetup(): string {
+  return `${gameSetupHeader('who-am-i')}${setupRoster(3)}<section class="setup"><p class="helper">${t('whoAmI.setup.helper')}</p>${button('start', `${t('game.start')} <span>↗</span>`, 'primary', data.selectedIds.length < 3 || !storageReady)}</section>`;
+}
+
 function setup(): string {
   if (data.selectedGameId === 'bomb') return bombSetup();
   if (data.selectedGameId === 'same-wave') return sameWaveSetup();
+  if (data.selectedGameId === 'who-am-i') return whoAmISetup();
   return `${gameSetupHeader('impostor')}${impostorSetup()}`;
 }
 
@@ -298,9 +307,31 @@ function sameWaveGameView(g: SameWaveGame): string {
   return `${top}<section class="game-screen live-card"><p class="eyebrow">${t('sameWave.pass')}</p><h1>${escape(player.name)}</h1><p class="helper">${t('sameWave.noPeeking')}</p><div id="secret-card" class="secret-card ${revealed ? 'flipped' : ''}">${revealed ? `<p class="eyebrow">${t('sameWave.choose')}</p><h2>${escape(prompt)}</h2><div class="wave-options">${optionsMarkup}</div>` : `${avatarArt(player.avatar)}<div class="swipe-prompt"><span>↑</span><b>${t('sameWave.reveal')}</b><small>${t('game.revealButtonHint')}</small></div>`}</div>${revealed ? '' : button('reveal', `${t('game.iAm')} ${escape(player.name)} · ${t('sameWave.reveal')}`)}<p class="footnote">${g.currentPlayerIndex + 1} ${t('game.of')} ${g.players.length} · ${t('game.appHidesSecret')}</p></section>`;
 }
 
+function whoAmIGameView(g: WhoAmIGame): string {
+  const top = `<div class="round-top">${button('exit', '←', 'icon-btn')}<span class="eyebrow">${gameName('who-am-i')}</span><span class="count">${g.players.length} ${t('game.friends')}</span></div>`;
+  if (g.phase === 'result') {
+    const winners = g.winnerIds.map((id) => escape(g.players.find((player) => player.id === id)?.name ?? '')).join(', ');
+    return `${top}<section class="game-screen result live-card"><span class="big-symbol">${g.winnerIds.length ? '🏆' : '🎯'}</span><p class="eyebrow">${t('whoAmI.result.eyebrow')}</p><h1>${g.winnerIds.length ? t('whoAmI.result.win') : t('whoAmI.result.noWinner')}</h1><p class="helper">${g.winnerIds.length ? t('whoAmI.result.winnerNames', { names: winners }) : t('whoAmI.result.allWrong')}</p>${button('again', `${t('game.rematch')} <span>↻</span>`)}${button('home', t('game.changeSetup'), 'text-btn')}</section>`;
+  }
+  if (g.phase === 'reveal') {
+    const viewer = g.players[g.turnIndex];
+    const identities = visibleWhoAmIIdentities(g, viewer.id).map(({ player, identity }) => `<div class="player"><span>${escape(player.name)}</span><strong>${escape(data.language === 'it' ? identity.label : identity.labelEn)}</strong></div>`).join('');
+    const secret = whoAmIRevealed ? `<div class="players">${identities}</div>${button('who-playing', t('whoAmI.reveal.done'))}` : `${avatarArt(viewer.avatar)}${button('who-reveal', t('whoAmI.reveal.show'))}`;
+    return `${top}<section class="game-screen live-card"><p class="eyebrow">${t('whoAmI.reveal.eyebrow')}</p><h1>${t('whoAmI.reveal.title', { name: escape(viewer.name) })}</h1><p class="helper">${t('whoAmI.reveal.helper')}</p>${secret}</section>`;
+  }
+  const player = g.players[g.turnIndex];
+  const buzzed = g.buzzedId === player.id;
+  const identity = g.identityByPlayerId[player.id];
+  const action = buzzed ? 'who-correct' : 'who-buzz';
+  const label = buzzed ? t('whoAmI.buzz.adjudicate') : t('whoAmI.buzz.button');
+  const revealedIdentity = data.language === 'it' ? identity.label : identity.labelEn;
+  return `${top}<section class="game-screen live-card"><p class="eyebrow">${t('whoAmI.turn.eyebrow')}</p><h1>${t('whoAmI.turn.title', { name: escape(player.name) })}</h1><p class="helper">${buzzed ? t('whoAmI.buzz.helper') : t('whoAmI.turn.helper')}</p>${buzzed ? `<h2 class="answer">${t('whoAmI.buzz.identity', { identity: escape(revealedIdentity) })}</h2>` : ''}${button(action, label, 'primary', false)}${buzzed ? button('who-wrong', t('whoAmI.buzz.wrong'), 'secondary') : button('who-next', t('whoAmI.turn.next'), 'secondary')}<div class="players">${g.players.filter((candidate) => !g.eliminatedIds.includes(candidate.id)).map((candidate) => `<div class="player"><span>${escape(candidate.name)}</span>${candidate.id === player.id ? `<strong>${t('whoAmI.turn.current')}</strong>` : ''}</div>`).join('')}</div></section>`;
+}
+
 function activeGameView(game: ActiveGame): string {
   if (game.gameId === 'bomb') return bombGameView(game);
   if (game.gameId === 'same-wave') return sameWaveGameView(game);
+  if (game.gameId === 'who-am-i') return whoAmIGameView(game);
   return impostorGameView(game);
 }
 
@@ -336,19 +367,20 @@ function deleteDialogView(): string {
   return `<h2 id="dialog-title">${t('player.deleteTitle')}</h2><p class="helper">${t('player.deleteHelper', { name: escape(player.name) })}</p>${button('confirm-delete', t('player.confirmDelete'))}${button('close', t('action.cancel'), 'text-btn')}`;
 }
 
-type HelpContext = 'catalog' | 'stats' | 'impostor' | 'bomb' | 'sameWave';
+type HelpContext = 'catalog' | 'stats' | 'impostor' | 'bomb' | 'sameWave' | 'whoAmI';
 const helpCopy: Record<HelpContext, { title: MessageKey; body: MessageKey }> = {
   catalog: { title: 'help.catalog.title', body: 'help.catalog.body' },
   stats: { title: 'help.stats.title', body: 'help.stats.body' },
   impostor: { title: 'help.impostor.title', body: 'help.impostor.body' },
   bomb: { title: 'help.bomb.title', body: 'help.bomb.body' },
   sameWave: { title: 'help.sameWave.title', body: 'help.sameWave.body' },
+  whoAmI: { title: 'help.whoAmI.title', body: 'help.whoAmI.body' },
 };
 
 function currentHelpContext(): HelpContext {
-  if (data.activeGame) return data.activeGame.gameId === 'same-wave' ? 'sameWave' : data.activeGame.gameId;
+  if (data.activeGame) return data.activeGame.gameId === 'same-wave' ? 'sameWave' : data.activeGame.gameId === 'who-am-i' ? 'whoAmI' : data.activeGame.gameId;
   if (screen === 'stats') return 'stats';
-  if (screen === 'setup') return data.selectedGameId === 'same-wave' ? 'sameWave' : data.selectedGameId;
+  if (screen === 'setup') return data.selectedGameId === 'same-wave' ? 'sameWave' : data.selectedGameId === 'who-am-i' ? 'whoAmI' : data.selectedGameId;
   return 'catalog';
 }
 
@@ -581,7 +613,7 @@ root.addEventListener('click', async e => {
     case 'retry': await init(); break;
     case 'catalog': screen = 'catalog'; categoryScreen = false; location.hash = 'catalog'; render(true); break;
     case 'stats': screen = 'stats'; categoryScreen = false; location.hash = 'stats'; render(true); break;
-    case 'language': revealed = false; await change(d => { d.language = d.language === 'it' ? 'en' : 'it'; }); break;
+    case 'language': revealed = false; whoAmIRevealed = false; await change(d => { d.language = d.language === 'it' ? 'en' : 'it'; }); break;
     case 'rules': revealed = false; dialog = 'rules'; render(); break;
     case 'add': draftName = ''; draftStats = emptyPlayerStats(); editingPlayerId = null; deletingPlayerId = null; photoError = ''; chosenAvatar = avatars[Math.floor(Math.random() * avatars.length)][0]; dialog = 'player'; render(); break;
     case 'close': dialog = null; editingPlayerId = null; deletingPlayerId = null; photoError = ''; render(); break;
@@ -601,7 +633,7 @@ root.addEventListener('click', async e => {
     case 'plus': await change(d => { d.settings.impostor.impostors = Math.min(maxImpostors(d.selectedIds.length), d.settings.impostor.impostors + 1); d.settings.impostor.maxAttempts = clampAttempts(d.selectedIds.length, d.settings.impostor.impostors, d.settings.impostor.maxAttempts); }); break;
     case 'attempt-minus': await change(d => { d.settings.impostor.maxAttempts = clampAttempts(d.selectedIds.length, d.settings.impostor.impostors, d.settings.impostor.maxAttempts - 1); }); break;
     case 'attempt-plus': await change(d => { d.settings.impostor.maxAttempts = clampAttempts(d.selectedIds.length, d.settings.impostor.impostors, d.settings.impostor.maxAttempts + 1); }); break;
-    case 'start': categoryScreen = false; revealed = false; clearBombExplosionFeedback(); bombExpiryAttemptedGameId = null; if (data.selectedGameId === 'bomb') primeBombAudio(); await change(d => {
+    case 'start': categoryScreen = false; revealed = false; whoAmIRevealed = false; clearBombExplosionFeedback(); bombExpiryAttemptedGameId = null; if (data.selectedGameId === 'bomb') primeBombAudio(); await change(d => {
       const players = d.players.filter(player => d.selectedIds.includes(player.id));
       if (d.selectedGameId === 'bomb') {
         const category = d.settings.bomb.category;
@@ -609,9 +641,11 @@ root.addEventListener('click', async e => {
         d.activeGame = createBombGame(players, prompts[Math.floor(Math.random() * prompts.length)]);
       } else if (d.selectedGameId === 'same-wave') {
         d.activeGame = createSameWaveGame(players, SAME_WAVE_PROMPTS[Math.floor(Math.random() * SAME_WAVE_PROMPTS.length)]);
+      } else if (d.selectedGameId === 'who-am-i') {
+        d.activeGame = createWhoAmIGame(players, WHO_AM_I_IDENTITIES);
       } else d.activeGame = createGame(players, d.settings.impostor);
     }); resetScrollToTop(); break;
-    case 'again': categoryScreen = false; revealed = false; clearBombExplosionFeedback(); bombExpiryAttemptedGameId = null; if (data.activeGame?.gameId === 'bomb') primeBombAudio(); await change(d => {
+    case 'again': categoryScreen = false; revealed = false; whoAmIRevealed = false; clearBombExplosionFeedback(); bombExpiryAttemptedGameId = null; if (data.activeGame?.gameId === 'bomb') primeBombAudio(); await change(d => {
       const game = d.activeGame;
       if (!game) return;
       if (game.gameId === 'bomb') {
@@ -619,6 +653,7 @@ root.addEventListener('click', async e => {
         const prompts = category === 'all' ? BOMB_PROMPTS : BOMB_PROMPTS.filter(prompt => prompt.category === category);
         d.activeGame = rematchBomb(game, prompts);
       } else if (game.gameId === 'same-wave') d.activeGame = rematchSameWave(game, SAME_WAVE_PROMPTS);
+      else if (game.gameId === 'who-am-i') d.activeGame = rematchWhoAmI(game, WHO_AM_I_IDENTITIES);
       else d.activeGame = createGame(game.players, d.settings.impostor, game.entry.word);
     }); resetScrollToTop(); break;
     case 'bomb-loser': clearBombExplosionFeedback(); await change(d => {
@@ -629,14 +664,25 @@ root.addEventListener('click', async e => {
     }); navigator.vibrate?.([30, 40, 30]); break;
     case 'reveal': revealCard(); break;
     case 'next': revealed = false; await change(d => { const g = d.activeGame; if (!g || g.gameId !== 'impostor') return; if (g.revealIndex + 1 < g.players.length) g.revealIndex++; else g.phase = 'discuss'; }); resetScrollToTop(); break;
+    case 'who-reveal': whoAmIRevealed = true; render(); break;
+    case 'who-playing': whoAmIRevealed = false; await change(d => {
+      const g = d.activeGame;
+      if (g?.gameId !== 'who-am-i') return;
+      if (g.turnIndex + 1 < g.players.length) g.turnIndex += 1;
+      else { g.phase = 'playing'; g.turnIndex = 0; }
+    }); resetScrollToTop(); break;
+    case 'who-buzz': await change(d => { const g = d.activeGame; if (g?.gameId === 'who-am-i') buzzWhoAmI(g, g.players[g.turnIndex].id); }); break;
+    case 'who-next': await change(d => { const g = d.activeGame; if (g?.gameId === 'who-am-i') nextWhoAmITurn(g, g.players[g.turnIndex].id); }); resetScrollToTop(); break;
+    case 'who-correct': await change(d => { const g = d.activeGame; if (!g || g.gameId !== 'who-am-i') return; const resolution = resolveWhoAmIGuess(g, true); if (resolution === 'result' && !g.scoreRecorded) { d.players = recordActiveGameResult(d.players, g); g.scoreRecorded = true; } }); navigator.vibrate?.([30, 40, 30]); break;
+    case 'who-wrong': await change(d => { const g = d.activeGame; if (!g || g.gameId !== 'who-am-i') return; const resolution = resolveWhoAmIGuess(g, false); if (resolution === 'result' && !g.scoreRecorded) { d.players = recordActiveGameResult(d.players, g); g.scoreRecorded = true; } }); navigator.vibrate?.([30, 40, 30]); break;
     case 'vote': case 'discuss': await change(d => { const game = d.activeGame; if (game?.gameId === 'impostor') game.phase = action; }); resetScrollToTop(); break;
     case 'result': await change(d => { const g = d.activeGame; if (!g || g.gameId !== 'impostor') return; const resolution = resolveVote(g); if (resolution === 'result') { g.phase = 'result'; if (!g.scoreRecorded) { d.players = recordActiveGameResult(d.players, g); g.scoreRecorded = true; } } else if (resolution === 'continue') g.phase = 'discuss'; }); navigator.vibrate?.([30, 40, 30]); resetScrollToTop(); break;
     case 'exit': revealed = false; dialog = 'exit'; editingPlayerId = null; deletingPlayerId = null; photoError = ''; render(); break;
-    case 'home': categoryScreen = false; dialog = null; revealed = false; clearBombExplosionFeedback(); bombExpiryAttemptedGameId = null; screen = 'setup'; location.hash = 'setup'; await change(d => { d.activeGame = null; }); resetScrollToTop(); break;
+    case 'home': categoryScreen = false; dialog = null; revealed = false; whoAmIRevealed = false; clearBombExplosionFeedback(); bombExpiryAttemptedGameId = null; screen = 'setup'; location.hash = 'setup'; await change(d => { d.activeGame = null; }); resetScrollToTop(); break;
   }
 });
 // Never persist an exposed card: reloads, app switching and history restore conceal it.
-function hideSecret() { if (revealed) { revealed = false; render(); } }
+function hideSecret() { if (revealed || whoAmIRevealed) { revealed = false; whoAmIRevealed = false; render(); } }
 document.addEventListener('visibilitychange', () => { if (document.hidden) hideSecret(); });
 window.addEventListener('pagehide', hideSecret);
 window.addEventListener('blur', hideSecret);

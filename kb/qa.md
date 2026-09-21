@@ -4,7 +4,7 @@
 
 Automated gates:
 
-- catalog resolves exactly three stable game IDs and rejects unknown IDs;
+- catalog resolves exactly four stable game IDs and rejects unknown IDs;
 - legacy IndexedDB snapshot migrates without losing players, photos, selections, Impostore settings, active game, or counters;
 - invalid new snapshots are rejected; failed writes preserve previous snapshot;
 - shared player selection is visible to every game setup;
@@ -15,13 +15,14 @@ Automated gates:
 - Bomba exposes no pass/holder controls or remaining time, expires from a persisted random deadline, resumes into play or adjudication, rejects invalid loser IDs, and records selected loser plus all winners once;
 - a fresh Bomba expiry produces one local explosion sound and brief animation plus an accessible BOOM message; reload does not replay it, reduced motion suppresses animation, and unavailable audio does not prevent adjudication;
 - Stessa Onda keeps choices private until completion, resolves single/tied/no-match winner groups, and records once;
+- Chi sono? hides own identity, reveals only other identities privately, rotates active players, permits one adjudicated guess each, resolves winner/all-wrong results, changes identities on rematch, and records once;
 - aggregate statistics equal sum of per-game records and reject inconsistent edits;
 - Italian and English catalogs cover every message and game-content projection;
 - `npm test` and `npm run build` pass from clean checkout.
 
 Browser QA at 390 × 844 and 320 × 740:
 
-- catalog shows three usable game cards, Pocket Circle brand, privacy promise, no horizontal overflow;
+- catalog shows four usable game cards, Pocket Circle brand, privacy promise, no horizontal overflow;
 - every route follows the normative Night Arcade tokens: deep-plum shell, warm-white readable copy, lime primary action/focus, common cards and controls; game identity never replaces the full-page palette;
 - mobile copy remains at least 14 px for body text and 12 px for metadata, tap targets remain at least 44 × 44 px, and no essential copy is low-contrast or laid over busy artwork;
 - header remains usable without clipping at 320 px: readable brand, icon navigation with accessible names, and no horizontal page scrollbar;
@@ -70,3 +71,10 @@ Browser-local data belongs to its origin. The development preview and public Git
 - Night Arcade visual system verified on catalog, setup, live Bomba, results, dialogs, and statistics. At 390 × 844 and 320 × 740, document width equals viewport content width; catalog body copy computes to 14 px and metadata to 12 px. Desktop 1280 × 800 uses three catalog columns.
 - Fresh browser load produced no console errors or warnings. Source scan found no runtime `fetch`, `XMLHttpRequest`, `WebSocket`, or `EventSource` calls.
 - Final IndexedDB tests cover malformed nested statistics, invalid game categories, malformed discriminated active sessions, valid Bomb resume, legacy attempt clamping, deletion of corrupt snapshots, and preserved writes.
+
+## Chi sono? validation — 2026-09-21
+
+- Automated gates passed after final changes: `npm test` reports 11 files and 96 tests; `npm run build` and `git diff --check` pass. Coverage includes 3–20 bounds, unique private identities, turn rotation, one buzz attempt, elimination, winner/all-wrong results, rematch identity changes, persistence migration, 60 bilingual identities, and exactly-once scoring.
+- Luna browser QA completed full local flow with three shared profiles: four-card catalog, setup minimum, private views excluding own identity, reload/language concealment, all reveals, next-turn rotation, buzz identity reveal, wrong elimination, correct winner, all-wrong result, rematch with changed identity, and statistics preserved without double count after reload.
+- Contextual help passed in Italian and English for catalog, statistics, and Chi sono?. Browser run used 1265 × 714 and showed no visible horizontal scrollbar.
+- Not verified in this run: exact 390 × 844 and 320 × 740 viewport overflow/tap sizes, console logs, blur/visibility concealment, keyboard, reduced motion, network inspection, and active-session history navigation. Reload and language concealment were verified.

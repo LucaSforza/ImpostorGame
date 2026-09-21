@@ -78,3 +78,19 @@ Browser-local data belongs to its origin. The development preview and public Git
 - Luna browser QA completed full local flow with three shared profiles: four-card catalog, setup minimum, private views excluding own identity, reload/language concealment, all reveals, next-turn rotation, buzz identity reveal, wrong elimination, correct winner, all-wrong result, rematch with changed identity, and statistics preserved without double count after reload.
 - Contextual help passed in Italian and English for catalog, statistics, and Chi sono?. Browser run used 1265 × 714 and showed no visible horizontal scrollbar.
 - Not verified in this run: exact 390 × 844 and 320 × 740 viewport overflow/tap sizes, console logs, blur/visibility concealment, keyboard, reduced motion, network inspection, and active-session history navigation. Reload and language concealment were verified.
+
+## Chi sono? Safari scroll regression — 2026-09-21
+
+- User recording reproduced retained setup scroll after starting a game: Safari kept the previous document offset while replacing setup with the private reveal screen, leaving its heading and action above the viewport.
+- Regression test first failed because the scroll-reset helper did not exist, then passed after resetting `window`, `document.scrollingElement`, `document.documentElement`, and `document.body` immediately and across two animation frames.
+- Local browser QA at 390 × 844 started from setup `scrollY=568`; after `Inizia la partita`, reveal opened at `scrollY=0` with heading and `Mostra le identità` visible.
+- At 320 × 740, reveal opened at `scrollY=0`, `scrollWidth` equaled the 320 px viewport, and the reveal action was visible. The exact high-offset transition could not be recreated at this width because the automation scroll gesture did not move the setup document.
+- Final gates: `npm test` reports 12 files and 97 tests; `npm run build` and `git diff --check` pass. Public GitHub Pages remains unverified until this fix is committed and pushed.
+
+## Chi sono? reveal artwork sizing — 2026-09-21
+
+- Browser QA reproduced a visual defect in the private identity screen: `.character-art` rendered at `672.7 × 882.7 px` and covered the viewport instead of staying inside the live card.
+- Root cause: `.character-art` uses `position: absolute; inset: 0`, while its direct `.game-screen.live-card` parent has `position: static`; the image therefore resolves against the page viewport. The same class remains correctly contained when nested in `.secret-card`.
+- Regression test first failed against the unfixed stylesheet, then passed after constraining direct live-card artwork to normal flow with a 320 px height limit.
+- Browser QA after fix showed heading/helper and reveal action visible, artwork contained in the card at `320 px`, no horizontal overflow at the active `673 × 883` viewport, private identities preserved, turn rotation, buzz identity reveal, and wrong-answer elimination.
+- Final gates passed: `npm test` reports 13 files and 98 tests; `npm run build` and `git diff --check` pass. Exact 390 × 844/320 × 740 viewport checks and public GitHub Pages remain unverified in this post-fix run.

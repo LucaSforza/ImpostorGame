@@ -13,6 +13,7 @@ import { playerGameStats, recordActiveGameResult, totalStats } from './stats';
 import { categoryDescription, categoryLabel, translate, type MessageKey, type MessageParams } from './i18n';
 import { categories, normalizeCategorySelection, selectedCategoryIds, type CategoryId, type SelectableCategoryId } from './words';
 import { screenFromHash, type AppScreen } from './router';
+import { resetPageScroll } from './scroll';
 import avatar01 from './assets/avatars/avatar-01.webp';
 import avatar02 from './assets/avatars/avatar-02.webp';
 import avatar03 from './assets/avatars/avatar-03.webp';
@@ -400,8 +401,7 @@ function dialogView(): string {
 }
 
 function resetScrollToTop(): void {
-  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-  requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
+  resetPageScroll();
 }
 
 function render(resetScroll = false): void {

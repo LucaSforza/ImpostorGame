@@ -34,7 +34,7 @@ Compatibility: setup values saved under the older, higher attempt limit are clam
 ## Bomba
 
 1. Select 2–20 players and one topic category or all standard categories. The separate Hot 18+ category contains 150 broad prompts and appears in a round only when explicitly selected; it is excluded from All.
-2. App chooses one bilingual topic and a random duration between 20 and 45 seconds. The deadline remains saved internally for reload recovery; remaining time is secret.
+2. App chooses one bilingual topic and a random duration between 45 and 120 seconds, inclusive. The deadline remains saved internally for reload recovery; remaining time is secret.
 3. Players say valid unused answers aloud and manage turns themselves; app shows only the bomb and topic. There is no numerical countdown, progress bar, accessible timer, or animation that reveals how close expiry is.
 4. Group resolves validity and duplicates without microphone or app controls.
 5. At expiry, a short explosion sound and animation announce the end, together with a visible, accessible BOOM message. Then the group selects the player caught by the explosion. Selected player receives loss/negative point; every other player wins. No score is recorded until that choice.

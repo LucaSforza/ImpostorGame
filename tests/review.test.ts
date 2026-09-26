@@ -15,7 +15,7 @@ const snapshot = (activeGame: ActiveGame | null = null): AppData<ActiveGame> => 
 });
 const sessions = () => [
   createGame(players(), snapshot().settings.impostor),
-  createBombGame(players(), undefined, { now: 1000, deadlineMs: 20_000 }),
+  createBombGame(players(), undefined, { now: 1000, deadlineMs: 45_000 }),
   createSameWaveGame(players(), undefined, () => 0),
   createWhoAmIGame(players(), undefined, () => 0),
 ];
@@ -39,6 +39,16 @@ describe('review: persistence regressions', () => {
     const data = snapshot(game);
     await saveData(data);
     await expect(loadData()).resolves.toEqual(data);
+  });
+
+  it('loads legacy 20-second and new 120-second Bomba sessions', async () => {
+    for (const duration of [20_000, 120_000]) {
+      const game = createBombGame(players(), undefined, { now: 1000, deadlineMs: 45_000 });
+      game.deadlineAt = game.startedAt + duration;
+      const data = snapshot(game);
+      await saveData(data);
+      await expect(loadData()).resolves.toEqual(data);
+    }
   });
 
   it('defaults an omitted supported attempt limit to a finite playable value', async () => {

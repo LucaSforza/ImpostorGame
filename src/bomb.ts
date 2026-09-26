@@ -3,6 +3,8 @@ import { bombPromptsForCategory, type BombPrompt } from './bomb-content';
 export type { BombPrompt } from './bomb-content';
 
 export const defaultBombPrompts: readonly BombPrompt[] = bombPromptsForCategory('all');
+const MIN_BOMB_SECONDS = 45;
+const MAX_BOMB_SECONDS = 120;
 export type BombPhase = 'playing' | 'assigning' | 'result';
 export interface BombGame {
   gameId: 'bomb'; id: string; players: Player[]; prompt: BombPrompt;
@@ -11,14 +13,16 @@ export interface BombGame {
 }
 export interface BombGameOptions { now?: number; deadlineMs?: number; random?: () => number; }
 function randomIndex(length: number, random: () => number = Math.random): number { if (length <= 0) throw new Error('No bomb prompts'); return Math.min(length - 1, Math.floor(random() * length)); }
-function randomDeadlineMs(random: () => number = Math.random): number { return (20 + randomIndex(26, random)) * 1000; }
+function randomDeadlineMs(random: () => number = Math.random): number {
+  return (MIN_BOMB_SECONDS + randomIndex(MAX_BOMB_SECONDS - MIN_BOMB_SECONDS + 1, random)) * 1000;
+}
 function validatePlayers(players: Player[]): void { if (players.length < 2 || players.length > 20 || new Set(players.map((player) => player.id)).size !== players.length) throw new Error('Invalid player count'); }
 
 export function createBombGame(players: Player[], prompt: BombPrompt = defaultBombPrompts[0], options: BombGameOptions | number = {}): BombGame {
   validatePlayers(players);
   const config = typeof options === 'number' ? { now: options } : options;
   const now = config.now ?? Date.now(); const deadlineMs = config.deadlineMs ?? randomDeadlineMs(config.random);
-  if (!Number.isSafeInteger(now) || !Number.isSafeInteger(deadlineMs) || deadlineMs < 20_000 || deadlineMs > 45_000) throw new Error('Invalid bomb deadline');
+  if (!Number.isSafeInteger(now) || !Number.isSafeInteger(deadlineMs) || deadlineMs < MIN_BOMB_SECONDS * 1000 || deadlineMs > MAX_BOMB_SECONDS * 1000) throw new Error('Invalid bomb deadline');
   const startIndex = randomIndex(players.length, config.random);
   const orderedPlayers = [...players.slice(startIndex), ...players.slice(0, startIndex)];
   return { gameId: 'bomb', id: crypto.randomUUID(), players: structuredClone(orderedPlayers), prompt: structuredClone(prompt), startedAt: now, deadlineAt: now + deadlineMs, phase: 'playing', loserId: null, winnerIds: [], scoreRecorded: false };

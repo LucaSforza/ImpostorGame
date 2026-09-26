@@ -1,5 +1,11 @@
 # Validation
 
+## Bomba timer range — 2026-09-27
+
+- New rounds choose a random duration from 45 through 120 seconds, inclusive. Persistence still accepts old 20–44 second active sessions and new 45–120 second sessions.
+- Regression evidence: before implementation, `npm test` had 6 failures covering random boundaries, invalid lower bound, 120-second rematch/creation, and loading 120-second snapshots. After implementation, `npm test` passed: 14 files and 110 tests.
+- Browser QA and build were not run per request; automated test suite only.
+
 ## Bomba Hot 18+ topics — 2026-09-27
 
 - Added 150 bilingual Hot 18+ prompts under a separate selectable category. Selecting All and default Bomba decks exclude these prompts; selecting Hot 18+ uses only that deck.

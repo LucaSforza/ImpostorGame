@@ -190,8 +190,9 @@ function isBombGameSnapshot(value: Record<string, unknown>): boolean {
   const loserId = value.loserId;
   if (!hasPlayerIds(winnerIds, players)) return false;
   const validWinnerIds = winnerIds as string[];
+  // Keep earlier 20–44 second sessions loadable; new rounds use 45–120 seconds.
   return validPrompt && isCounter(value.startedAt) && isCounter(value.deadlineAt) && value.deadlineAt > value.startedAt
-    && value.deadlineAt - value.startedAt >= 20_000 && value.deadlineAt - value.startedAt <= 45_000
+    && value.deadlineAt - value.startedAt >= 20_000 && value.deadlineAt - value.startedAt <= 120_000
     && typeof value.phase === 'string' && ['playing', 'assigning', 'result'].includes(value.phase)
     && (loserId === null || (typeof loserId === 'string' && playerIds.includes(loserId)))
     && (value.scoreRecorded === undefined || typeof value.scoreRecorded === 'boolean')

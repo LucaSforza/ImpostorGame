@@ -193,7 +193,7 @@ footer > span:first-child { color: var(--violet); }
 .secret-card.flipped { border-color: var(--lime); background: var(--surface-raised); }
 .secret-card.crew-card { --role-color: var(--crew); }
 .secret-card.impostor-card { --role-color: var(--impostor); }
-.secret-card.flipped.crew-card, .secret-card.flipped.impostor-card { border-color: var(--role-color); background: color-mix(in srgb, var(--surface-raised) 90%, var(--role-color)); }
+.secret-card.flipped.crew-card, .secret-card.flipped.impostor-card { border: 2px solid var(--role-color); background: color-mix(in srgb, var(--surface-raised) 90%, var(--role-color)); }
 .character-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center; background: var(--surface-raised); }
 .character-art.photo { background: var(--surface-raised); }
 .swipe-prompt { position: absolute; right: 0; bottom: 0; left: 0; display: flex; flex-direction: column; align-items: center; gap: var(--space-1); padding: var(--space-7) var(--space-3) var(--space-4); background: linear-gradient(transparent, var(--surface)); }
@@ -202,7 +202,7 @@ footer > span:first-child { color: var(--violet); }
 .swipe-prompt small { color: var(--text-secondary); font-size: 12px; }
 .role-label { padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--role-color, var(--lime)); color: var(--lime-ink); font-size: 18px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
 .secret-icon { margin: var(--space-4) 0; font-size: 48px; }
-.secret-word { max-width: 100%; margin: 0 0 var(--space-3); color: var(--text); font-size: clamp(34px, 10vw, 56px); line-height: 1.08; overflow-wrap: anywhere; }
+.secret-word { max-width: 100%; margin: 0 0 var(--space-3); color: var(--role-color, var(--lime)); font-size: clamp(34px, 10vw, 56px); line-height: 1.08; overflow-wrap: anywhere; }
 .card-mark { color: var(--violet); font-size: 54px; font-weight: 900; }
 .big-symbol { display: block; margin: var(--space-3) 0 var(--space-4); color: var(--lime); font-size: 64px; }
 .starter, .tip, .attempt-notice { padding: var(--space-5); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-raised); text-align: left; }

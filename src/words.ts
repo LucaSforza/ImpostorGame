@@ -1,3 +1,5 @@
+import { spicy18Words } from './spicy-18';
+
 export type WordEntry = {
   word: string;
   hint: string;
@@ -20,6 +22,7 @@ export const categories = [
   "trend",
   "party_chaos",
   "spicy_personal",
+  "spicy_18",
   "film",
   "hobby",
 ] as const;
@@ -43,6 +46,7 @@ const categoryIds: Record<string, CategoryId> = {
   trend: "trend",
   party_chaos: "party_chaos",
   spicy_personal: "spicy_personal",
+  spicy_18: "spicy_18",
   film: "film",
   hobby: "hobby",
 };
@@ -77,6 +81,11 @@ export function isCategorySelection(value: unknown): value is CategorySelection 
 export function selectedCategoryIds(value: CategorySelection): SelectableCategoryId[] | null {
   const selection = normalizeCategorySelection(value);
   return selection === "all" ? null : Array.isArray(selection) ? selection : [selection];
+}
+
+export function availableWords(selection: CategorySelection): WordEntry[] {
+  const selected = selectedCategoryIds(selection);
+  return words.filter(entry => selected ? selected.includes(entry.category) : entry.category !== 'spicy_18');
 }
 
 export const words: WordEntry[] = [
@@ -365,6 +374,9 @@ export const words: WordEntry[] = [
   { word: "confidenza", hint: "fiducia", wordEn: "closeness", hintEn: "trust", category: "spicy_personal" },
   { word: "gelosia", hint: "possesso", wordEn: "jealousy", hintEn: "possessiveness", category: "spicy_personal" },
   { word: "red flag", hint: "allarme", wordEn: "red flag", hintEn: "warning", category: "spicy_personal" },
+
+  // Categoria 18+: disponibile solo tramite scelta esplicita.
+  ...spicy18Words,
 
   // Film
   { word: "blockbuster", hint: "successo", wordEn: "blockbuster", hintEn: "hit", category: "film" },

@@ -2,7 +2,7 @@
 
 Pocket Circle offers Impostore, Bomba, Stessa Onda, and Chi sono?. Saved player profiles are shared across all games. Each completed session records per-game statistics once; exiting before result records nothing.
 
-Every new game and rematch randomly chooses the first player. The session rotates its participant order to put that player first, preserving the other players' relative circular order and leaving the saved roster unchanged. The choice is independent each round, so the same person can legitimately start twice. The order is persisted: reload, language changes, and screen rendering do not draw a new starter. In Impostore the same player starts the private reveal and discussion; in Bomba the screen names who starts answering; in Stessa Onda that player makes the first private choice; in Chi sono? that player first views the other identities and asks the first question.
+Every new game and rematch randomly chooses the first player. Impostore shuffles the full participant order and excludes the previous starter on rematch, so consecutive rounds cannot have the same order. Other games rotate the saved participant order around a randomly chosen starter, preserving the remaining circular order. The shared roster stays unchanged. Session order persists through reload, language changes, and screen rendering. In Impostore the same player starts the private reveal and discussion; in Bomba the screen names who starts answering; in Stessa Onda that player makes the first private choice; in Chi sono? that player first views the other identities and asks the first question.
 
 ## Impostore
 
@@ -11,15 +11,15 @@ Every new game and rematch randomly chooses the first player. The session rotate
 1. Select 3 to 20 players saved on the device.
 2. Choose 1 to `floor((players - 1) / 2)` impostors; impostors are always fewer than half of the group.
 3. Choose between `impostors` and `max(2, floor((players - 1) / 2))` voting sessions. The maximum is 2 for 3–6 players, 3 for 7–8, up to 9 for 19–20. At least one session per impostor is required. With one impostor, the default remains one session; choosing two gives the crew one more vote after a wrong accusation. Changing selected players clamps both impostor count and the session limit to the valid range.
-4. Choose one or more categories, or all categories.
+4. Choose one or more categories, or the standard deck. `Spicy 18+` is a separate category with 300 paired words and joins the draw only when explicitly selected; the standard deck excludes it.
 
-The game randomly selects a `WordEntry` without repeating the previous word on rematch, assigns roles, and chooses the first player independently of those roles.
+The game randomly selects a `WordEntry` without repeating the previous crew word or the same player order on rematch, assigns roles, and chooses the first player independently of those roles.
 
 ## Secret reveal
 
-Pass the phone to each player in order. Citizens receive the same word; impostors receive only its associated hint. Before reveal, the card shows the character artwork and offers an accessible Reveal button; an upward swipe of more than 55 pixels is also accepted. The open card uses a prominent green crew or red impostor role label, a lightly tinted border and surface, and large high-contrast word or hint text. Each player must hide the card before passing the phone. If the page loses visibility, the app automatically hides an open card.
+Pass the phone to each player in order. Crew members receive the same word; impostors receive its paired, different word (stored in the legacy `hint` field for saved-session compatibility). Before reveal, the card shows the character artwork and offers an accessible Reveal button; an upward swipe of more than 55 pixels is also accepted. The open card uses a prominent green crew or red impostor role label, a lightly tinted surface, a 2 px role-colored border, and large text in the same role color. Each player must hide the card before passing the phone. If the page loses visibility, the app automatically hides an open card.
 
-The word, hint, interface, and category labels follow the current interface language. Switching language during a game re-renders the current card in the new language; the selected word, categories, roles, and game phase do not change.
+Both words, interface, and category labels follow the current interface language. Switching language during a game re-renders the current card in the new language; the selected pair, categories, roles, and game phase do not change.
 
 ## Discussion and vote
 

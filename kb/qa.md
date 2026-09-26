@@ -1,5 +1,12 @@
 # Validation
 
+## Impostore Spicy 18+ and random rematches — 2026-09-27
+
+- Baseline `npm test`: 14 files, 101 tests passed. New regressions failed before the changes: repeated starter, unavailable `spicy_18`, zero adult pairs, and a rotated rather than shuffled participant order. All pass after the implementation.
+- Content tests verify 300 bilingual pairs in a separate `spicy_18` category, nonidentical crew/impostor terms, and exclusion from the default deck. Existing `spicy_personal` content remains available.
+- Local browser QA at 390 × 844 on an isolated development origin: choosing Spicy 18+ from All selected only that category; setup showed 300 pairs; three temporary players completed a two-attempt round. Crew word rendered green, impostor word red, both with 2 px role-colored borders and no horizontal overflow. A failed first vote returned to discussion; the second vote completed the round. Rematch opened with a hidden card, a different starter, and a different word.
+- Final gates: `npm test` reports 14 files and 104 tests; `npm run build` and `git diff --check` pass. The final shuffled-order change was covered by tests but did not receive another browser run. GitHub Pages workflow and public site remain unverified until push.
+
 ## Impostore private reveal and rematch — 2026-09-27
 
 - Baseline `npm test`: 13 files, 98 tests passed. A new privacy regression failed before the concealment helper existed, then passed after the result was cleared synchronously before rematch persistence.

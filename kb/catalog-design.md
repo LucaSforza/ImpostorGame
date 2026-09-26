@@ -78,7 +78,7 @@ Profiles belong to `AppData`, not to any game. Every session snapshots participa
 
 ### Impostore
 
-Existing hidden-role game remains behavior-compatible: 3–20 players, configurable impostor count and voting attempts, bilingual word categories, private reveal, discussion, progressive voting, and rematch. Existing citizen/impostor role counters remain available as an Impostore-specific breakdown in addition to generic wins and losses.
+Existing hidden-role game remains behavior-compatible: 3–20 players, configurable impostor count and voting attempts, bilingual word categories, private reveal, discussion, progressive voting, and rematch. A separate `Spicy 18+` category contains 300 paired words, selected explicitly and excluded from the standard all-category draw. Existing citizen/impostor role counters remain available as an Impostore-specific breakdown in addition to generic wins and losses.
 
 ### Bomba
 
@@ -118,7 +118,7 @@ Pocket Circle uses one visual language on every route and in every game. Catalog
 - Text: warm white `#F8F5FB`; secondary text `#C8BED2`; muted text `#A89DB5`.
 - Primary accent: electric lime `#D4F777`; dark text on lime `#202713`.
 - Secondary accent: soft violet `#B9A7E8`. Coral `#FF7657` is reserved for danger, Bomba identity/explosion feedback, and destructive confirmation.
-- Impostore private role feedback uses green `#8FE6AA` for crew and red `#FF807B` for impostors on the revealed card only. Role text remains explicit; the role color lightly tints the card and does not replace the shared shell or action color.
+- Impostore private role feedback uses green `#8FE6AA` for crew and red `#FF807B` for impostors on the revealed card only. Role text remains explicit; the role color marks the word, 2 px border, and a light card tint without replacing the shared shell or action color.
 - Borders use `#463952`. Focus rings use lime and remain visible on every background.
 - Body text is at least `14px` on mobile; supporting metadata at least `12px`. Line height is at least `1.45`. No essential copy uses low-opacity text.
 - Page width is fluid with a readable maximum. At `320px` and wider there is no horizontal page overflow.

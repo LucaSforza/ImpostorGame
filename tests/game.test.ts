@@ -86,18 +86,49 @@ describe("createGame", () => {
     expect(players[1].name).toBe("Player 2");
   });
 
-  it("starts reveal and discussion from a random rotated player order", () => {
+  it("starts reveal and discussion from a shuffled player order", () => {
     const randomValues = vi.spyOn(crypto, "getRandomValues").mockImplementation((array) => {
       (array as Uint32Array)[0] = 1;
       return array;
     });
 
     try {
-      const game = createGame(makePlayers(3), makeSettings(1));
+      const game = createGame(makePlayers(4), makeSettings(1));
 
-      expect(game.players.map((player) => player.id)).toEqual(["player-2", "player-3", "player-1"]);
-      expect(game.starterId).toBe("player-2");
+      expect(game.players.map((player) => player.id)).toEqual(["player-1", "player-3", "player-4", "player-2"]);
+      expect(game.starterId).toBe("player-1");
       expect(game.revealIndex).toBe(0);
+    } finally {
+      randomValues.mockRestore();
+    }
+  });
+
+  it("changes both the starter and word on rematch, even when random draws repeat", () => {
+    const randomValues = vi.spyOn(crypto, "getRandomValues").mockImplementation((array) => {
+      (array as Uint32Array)[0] = 0;
+      return array;
+    });
+
+    try {
+      const first = createGame(makePlayers(3), makeSettings(1));
+      const rematch = createGame(first.players, makeSettings(1), first.entry.word, first.starterId);
+
+      expect(rematch.players[0].id).not.toBe(first.starterId);
+      expect(rematch.entry.word).not.toBe(first.entry.word);
+    } finally {
+      randomValues.mockRestore();
+    }
+  });
+
+  it("keeps 18+ pairs out of the default deck until explicitly selected", () => {
+    const randomValues = vi.spyOn(crypto, "getRandomValues").mockImplementation((array) => {
+      (array as Uint32Array)[0] = 599;
+      return array;
+    });
+
+    try {
+      expect(createGame(makePlayers(3), makeSettings(1)).entry.category).not.toBe("spicy_18");
+      expect(createGame(makePlayers(3), makeSettings(1, "spicy_18")).entry.category).toBe("spicy_18");
     } finally {
       randomValues.mockRestore();
     }

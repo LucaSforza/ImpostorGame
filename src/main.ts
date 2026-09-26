@@ -11,7 +11,7 @@ import { playBombExplosion, primeBombAudio } from './bomb-audio';
 import { gameCatalog, type GameId } from './catalog';
 import { playerGameStats, recordActiveGameResult, totalStats } from './stats';
 import { categoryDescription, categoryLabel, translate, type MessageKey, type MessageParams } from './i18n';
-import { categories, normalizeCategorySelection, selectedCategoryIds, type CategoryId, type SelectableCategoryId } from './words';
+import { availableWords, categories, normalizeCategorySelection, selectedCategoryIds, type CategoryId, type SelectableCategoryId } from './words';
 import { screenFromHash, type AppScreen } from './router';
 import { resetPageScroll } from './scroll';
 import { concealResult } from './reveal-privacy';
@@ -73,6 +73,7 @@ const categoryImages: Record<SelectableCategoryId, string> = {
   trend: trendImage,
   party_chaos: partyChaosImage,
   spicy_personal: spicyPersonalImage,
+  spicy_18: spicyPersonalImage,
   film: filmImage,
   hobby: hobbyImage,
 };
@@ -169,14 +170,14 @@ function categoryCard(category: 'all' | SelectableCategoryId): string {
 
 function categoryPicker(): string {
   const selection = normalizeCategorySelection(data.settings.impostor.category);
-  const selectedCount = selection === 'all' ? categories.length : (selectedCategoryIds(selection) ?? []).length;
+  const selectedCount = selection === 'all' ? categories.length - 1 : (selectedCategoryIds(selection) ?? []).length;
   const summaryKey = selection === 'all' ? 'category.selectedAll' : selectedCount === 1 ? 'category.selectedOne' : 'category.selectedMany';
   return `<p class="category-hint">${t('category.selectHint')}</p><div class="category-picker" role="group" aria-label="${t('deck.title')}">${categoryCard('all')}${categories.map(categoryCard).join('')}</div><p class="category-summary">${t(summaryKey, { count: selectedCount })}</p>`;
 }
 
 function categorySelectionSummary(): string {
   const selection = normalizeCategorySelection(data.settings.impostor.category);
-  const count = selection === 'all' ? categories.length : (selectedCategoryIds(selection) ?? []).length;
+  const count = selection === 'all' ? categories.length - 1 : (selectedCategoryIds(selection) ?? []).length;
   const key = selection === 'all' ? 'category.selectedAll' : count === 1 ? 'category.selectedOne' : 'category.selectedMany';
   return t(key, { count });
 }
@@ -196,7 +197,7 @@ function impostorSetup(): string {
   ${button('add', `＋ ${t('player.new')}`, 'secondary', !storageReady)}
   <div class="setting"><div><strong>${t('game.impostors')}</strong><small>${t('game.impostorHint')}</small></div><div class="stepper"><button data-action="minus" aria-label="${t('game.fewerImpostors')}" ${data.settings.impostor.impostors <= 1 || busy ? 'disabled' : ''}>−</button><b>${data.settings.impostor.impostors}</b><button data-action="plus" aria-label="${t('game.moreImpostors')}" ${data.settings.impostor.impostors >= maxImpostors(count) || busy ? 'disabled' : ''}>+</button></div></div>
   <div class="setting"><div><strong>${t('game.attempts')}</strong><small>${t('game.attemptsHint', { min: attemptMinimum, max: attemptLimit })}</small></div><div class="stepper"><button data-action="attempt-minus" aria-label="${t('game.fewerAttempts')}" ${attempts <= attemptMinimum || busy ? 'disabled' : ''}>−</button><b>${attempts}</b><button data-action="attempt-plus" aria-label="${t('game.moreAttempts')}" ${attempts >= attemptLimit || busy ? 'disabled' : ''}>+</button></div></div>
-  <div class="setting category-setting"><div class="category-setting-copy"><strong>${t('deck.title')}</strong><small>${t('deck.subtitle')}</small><span>${categorySelectionSummary()}</span></div>${button('open-categories', `${t('category.change')} <span>→</span>`, 'category-open')}</div>
+  <div class="setting category-setting"><div class="category-setting-copy"><strong>${t('deck.title')}</strong><small>${t('deck.subtitle', { count: availableWords(normalizeCategorySelection(data.settings.impostor.category)).length })}</small><span>${categorySelectionSummary()}</span></div>${button('open-categories', `${t('category.change')} <span>→</span>`, 'category-open')}</div>
   ${button('start', `${t('game.start')} <span>↗</span>`, 'primary', count < 3 || !storageReady)}
   <p class="footnote">${count < 3 ? t(3 - count === 1 ? 'setup.morePlayersOne' : 'setup.morePlayersMany', { count: 3 - count }) : t('setup.passSecrets')}</p></section>`;
 }
@@ -577,7 +578,8 @@ root.addEventListener('click', async e => {
       const next = current.includes(category as SelectableCategoryId)
         ? current.filter(item => item !== category)
         : [...current, category as SelectableCategoryId];
-      d.settings.impostor.category = next.length === 0 ? 'all' : next.length === 1 ? next[0] : next;
+      d.settings.impostor.category = next.length === 0 || (next.length === categories.length - 1 && !next.includes('spicy_18'))
+        ? 'all' : next.length === 1 ? next[0] : next;
     });
     return;
   }
@@ -655,7 +657,7 @@ root.addEventListener('click', async e => {
         d.activeGame = rematchBomb(game, prompts);
       } else if (game.gameId === 'same-wave') d.activeGame = rematchSameWave(game, SAME_WAVE_PROMPTS);
       else if (game.gameId === 'who-am-i') d.activeGame = rematchWhoAmI(game, WHO_AM_I_IDENTITIES);
-      else d.activeGame = createGame(game.players, d.settings.impostor, game.entry.word);
+      else d.activeGame = createGame(game.players, d.settings.impostor, game.entry.word, game.starterId);
     }); resetScrollToTop(); break;
     case 'bomb-loser': clearBombExplosionFeedback(); await change(d => {
       const game = d.activeGame;
@@ -740,7 +742,7 @@ if (modelContext) {
       annotations: { readOnlyHint: true, untrustedContentHint: false },
       execute(input: unknown) {
         if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).length) throw new Error('Expected an empty object');
-        const selected = selectedCategoryIds(normalizeCategorySelection(data.settings.impostor.category)) ?? categories;
+        const selected = selectedCategoryIds(normalizeCategorySelection(data.settings.impostor.category)) ?? categories.filter(category => category !== 'spicy_18');
         return { language: data.language, selectedPlayers: data.selectedIds.length, impostors: data.settings.impostor.impostors, categorySelection: data.settings.impostor.category, categoryLabels: selected.map(category => categoryLabel(data.language, category)), phase: data.activeGame?.phase ?? 'setup', storageReady };
       },
     }, { signal: lifecycle.signal })).catch(() => console.warn('Game setup tool registration unavailable'));

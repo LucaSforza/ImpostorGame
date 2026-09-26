@@ -2,8 +2,22 @@ import { describe, expect, it } from "vitest";
 import { BOMB_CATEGORIES, BOMB_CATEGORY_IDS, BOMB_CATEGORY_LABELS, BOMB_PROMPTS } from "../src/bomb-content";
 import { SAME_WAVE_PROMPTS } from "../src/same-wave-content";
 import { WHO_AM_I_IDENTITIES } from "../src/who-am-i-content";
+import { words } from "../src/words";
 
 const unique = (values: readonly string[]) => new Set(values).size === values.length;
+
+describe("Spicy 18+ word pairs", () => {
+  it("keeps all 300 distinct-role pairs bilingual in their own category", () => {
+    const spicy = words.filter(entry => entry.category === "spicy_18");
+
+    expect(spicy).toHaveLength(300);
+    expect(spicy[0]).toMatchObject({ word: "BDSM", hint: "Tinder", wordEn: "BDSM", hintEn: "Tinder" });
+    expect(spicy[299]).toMatchObject({ word: "Cock ring", hint: "Scambismo" });
+    expect(spicy.every(entry => entry.word.trim() && entry.hint.trim() && entry.wordEn.trim() && entry.hintEn.trim())).toBe(true);
+    expect(spicy.every(entry => entry.word.toLocaleLowerCase() !== entry.hint.toLocaleLowerCase())).toBe(true);
+    expect(spicy.every(entry => entry.wordEn.toLocaleLowerCase() !== entry.hintEn.toLocaleLowerCase())).toBe(true);
+  });
+});
 
 describe("Bomba content catalog", () => {
   it("contains many bilingual prompts across stable categories", () => {

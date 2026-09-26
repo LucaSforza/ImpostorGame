@@ -10,14 +10,14 @@ Every new game and rematch randomly chooses the first player. The session rotate
 
 1. Select 3 to 20 players saved on the device.
 2. Choose 1 to `floor((players - 1) / 2)` impostors; impostors are always fewer than half of the group.
-3. Choose between `impostors` and `floor((players - 1) / 2)` voting sessions. The maximum is 1 for 3–4 players, 2 for 5–6, 3 for 7–8, up to 9 for 19–20. At least one session per impostor is required. Changing selected players clamps both impostor count and the session limit to the valid range.
+3. Choose between `impostors` and `max(2, floor((players - 1) / 2))` voting sessions. The maximum is 2 for 3–6 players, 3 for 7–8, up to 9 for 19–20. At least one session per impostor is required. With one impostor, the default remains one session; choosing two gives the crew one more vote after a wrong accusation. Changing selected players clamps both impostor count and the session limit to the valid range.
 4. Choose one or more categories, or all categories.
 
 The game randomly selects a `WordEntry` without repeating the previous word on rematch, assigns roles, and chooses the first player independently of those roles.
 
 ## Secret reveal
 
-Pass the phone to each player in order. Citizens receive the same word; impostors receive only its associated hint. Before reveal, the card shows the character artwork and offers an accessible Reveal button; an upward swipe of more than 55 pixels is also accepted. Each player must hide the card before passing the phone. If the page loses visibility, the app automatically hides an open card.
+Pass the phone to each player in order. Citizens receive the same word; impostors receive only its associated hint. Before reveal, the card shows the character artwork and offers an accessible Reveal button; an upward swipe of more than 55 pixels is also accepted. The open card uses a prominent green crew or red impostor role label, a lightly tinted border and surface, and large high-contrast word or hint text. Each player must hide the card before passing the phone. If the page loses visibility, the app automatically hides an open card.
 
 The word, hint, interface, and category labels follow the current interface language. Switching language during a game re-renders the current card in the new language; the selected word, categories, roles, and game phase do not change.
 
@@ -27,7 +27,7 @@ During discussion, each player takes a turn saying a word related to the secret 
 
 The vote is collective: each session selects exactly one suspect. The selected candidate is permanently removed from later vote controls. If the candidate is an impostor, that impostor is marked as found and the crew continues voting until all impostors are found; innocent selections also consume a session. The crew wins when every impostor is found. If maximum sessions are exhausted first, impostors win. The result shows the word, the impostors, and every candidate accused across sessions.
 
-From the result screen, the group can start a rematch while keeping players and settings; the home screen allows players and rules to be changed. The active game is saved locally so it can be restored after a reload.
+From the result screen, the group can start a rematch while keeping players and settings; the result secret is cleared as soon as rematch is pressed, before the new round is saved. The new round opens with the first player's card hidden. The home screen allows players and rules to be changed. The active game is saved locally so it can be restored after a reload.
 
 Compatibility: setup values saved under the older, higher attempt limit are clamped to the new range. An already-started session retains its saved valid limit so an update cannot change its rules or score halfway through; new games and rematches use the new limits.
 

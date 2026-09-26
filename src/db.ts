@@ -293,7 +293,8 @@ function normalizeSnapshot<T>(stored: unknown): AppData<T> {
   const old = source.settings as Record<string, unknown>;
   const impostor: GameSettings = legacySettings ? { impostors: old.impostors as number, maxAttempts: isCounter(old.maxAttempts) ? old.maxAttempts : Math.max(1, old.impostors as number), category: old.category as CategorySelection } : structuredClone((source.settings as SettingsByGame).impostor);
   const minimumAttempts = Math.max(1, impostor.impostors);
-  const maximumAttempts = Math.max(1, Math.floor(((source.selectedIds as string[]).length - 1) / 2));
+  const selectedCount = (source.selectedIds as string[]).length;
+  const maximumAttempts = selectedCount < 3 ? 1 : Math.max(2, Math.floor((selectedCount - 1) / 2));
   const configuredAttempts = isCounter(impostor.maxAttempts) ? impostor.maxAttempts : minimumAttempts;
   const settings: SettingsByGame = {
     impostor: { ...impostor, maxAttempts: Math.max(minimumAttempts, Math.min(maximumAttempts, configuredAttempts)) },

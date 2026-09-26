@@ -28,7 +28,7 @@ export type ActiveGame = ImpostorGame | BombGame | SameWaveGame | WhoAmIGame;
 export interface LocalizedEntry { word: string; hint: string; category: string; }
 export function maxImpostors(count: number): number { return Math.max(1, Math.floor((count - 1) / 2)); }
 export function minAttempts(_playerCount: number, impostorCount: number): number { return Math.max(1, impostorCount); }
-export function maxAttempts(playerCount: number, _impostorCount: number): number { return Math.max(1, Math.floor((playerCount - 1) / 2)); }
+export function maxAttempts(playerCount: number, _impostorCount: number): number { return playerCount < 3 ? 1 : Math.max(2, Math.floor((playerCount - 1) / 2)); }
 
 function randomIndex(length: number): number {
   if (length <= 0) throw new Error('Invalid random range');

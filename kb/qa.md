@@ -1,5 +1,17 @@
 # Validation
 
+## Impostore private reveal and rematch — 2026-09-27
+
+- Baseline `npm test`: 13 files, 98 tests passed. A new privacy regression failed before the concealment helper existed, then passed after the result was cleared synchronously before rematch persistence.
+- Local browser QA on an isolated development origin at 390 × 844: three-player round showed readable green crew and red impostor labels, large word/hint text, and a hidden first card after rematch. At 320 × 740, the revealed card and action stayed within the viewport width; `sceneggiatura` fit on one line at the final 34 px minimum. Document width remained below viewport width.
+- Final gates passed: `npm test` reports 14 files and 99 tests; `npm run build` and `git diff --check` pass. Deployed GitHub Pages behavior remains unverified until the push deploys.
+
+## Impostore second vote — 2026-09-27
+
+- Regression reproduced: a three-player game configured for two votes threw `Invalid attempt count`. After extending the limit, a wrong first accusation leaves a second vote that can find the impostor; focused game and persistence tests pass (53 tests across 2 files).
+- Three-player settings with two votes survive a local snapshot round trip. A legacy in-progress game retains its saved voting limit, while new setup values clamp to the revised bound. Browser setup showed `Da 1 a 2`, enabled `Più tentativi`, then retained `2` after reload.
+- Final gates passed: `npm test` reports 14 files and 101 tests; `npm run build` and `git diff --check` pass. Deployed GitHub Pages behavior remains unverified until the push deploys.
+
 ## Multi-game release acceptance matrix
 
 Automated gates:
@@ -11,7 +23,7 @@ Automated gates:
 - every new game/rematch draws a random first player, preserves the shared roster, and saves the chosen order; reload must not rerandomize it;
 - each game enforces its documented player bounds and rejects malformed settings/content;
 - Impostore regression suite remains green;
-- new Impostore sessions allow at most `floor((players - 1) / 2)` attempts (3–4 players → 1); setup clamps limits after selection changes, and valid older in-progress sessions retain their saved rules;
+- new Impostore sessions allow at most `max(2, floor((players - 1) / 2))` attempts (3–4 players → 2); setup clamps limits after selection changes, and valid older in-progress sessions retain their saved rules;
 - Bomba exposes no pass/holder controls or remaining time, expires from a persisted random deadline, resumes into play or adjudication, rejects invalid loser IDs, and records selected loser plus all winners once;
 - a fresh Bomba expiry produces one local explosion sound and brief animation plus an accessible BOOM message; reload does not replay it, reduced motion suppresses animation, and unavailable audio does not prevent adjudication;
 - Stessa Onda keeps choices private until completion, resolves single/tied/no-match winner groups, and records once;

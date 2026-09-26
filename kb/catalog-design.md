@@ -118,6 +118,7 @@ Pocket Circle uses one visual language on every route and in every game. Catalog
 - Text: warm white `#F8F5FB`; secondary text `#C8BED2`; muted text `#A89DB5`.
 - Primary accent: electric lime `#D4F777`; dark text on lime `#202713`.
 - Secondary accent: soft violet `#B9A7E8`. Coral `#FF7657` is reserved for danger, Bomba identity/explosion feedback, and destructive confirmation.
+- Impostore private role feedback uses green `#8FE6AA` for crew and red `#FF807B` for impostors on the revealed card only. Role text remains explicit; the role color lightly tints the card and does not replace the shared shell or action color.
 - Borders use `#463952`. Focus rings use lime and remain visible on every background.
 - Body text is at least `14px` on mobile; supporting metadata at least `12px`. Line height is at least `1.45`. No essential copy uses low-opacity text.
 - Page width is fluid with a readable maximum. At `320px` and wider there is no horizontal page overflow.

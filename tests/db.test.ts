@@ -156,6 +156,19 @@ describe("local game snapshot", () => {
     await expect(loadData()).resolves.toMatchObject({ settings: { impostor: { maxAttempts: 2 } } });
   });
 
+  it("preserves a three-player setup with two crew attempts", async () => {
+    const players = Array.from({ length: 3 }, (_, index) => ({ id: `p${index + 1}`, name: `Player ${index + 1}`, avatar: "fox", createdAt: index + 1, stats: emptyPlayerStats() }));
+    const data: AppData<null> = {
+      players, selectedIds: players.map(player => player.id), selectedGameId: "impostor",
+      settings: { ...settings(), impostor: { ...settings().impostor, maxAttempts: 2 } },
+      language: "it", activeGame: null,
+    };
+
+    await saveData(data);
+
+    await expect(loadData()).resolves.toEqual(data);
+  });
+
   it("clamps a legacy attempt limit below the impostor count instead of deleting the snapshot", async () => {
     const legacy = {
       players: Array.from({ length: 5 }, (_, index) => ({ id: `p${index + 1}`, name: `Player ${index + 1}`, avatar: "fox", createdAt: index + 1 })),
@@ -187,7 +200,7 @@ describe("local game snapshot", () => {
     await saveData(legacy);
 
     await expect(loadData()).resolves.toMatchObject({
-      settings: { impostor: { maxAttempts: 1 } },
+      settings: { impostor: { maxAttempts: 2 } },
       activeGame: { gameId: "impostor", maxAttempts: 3 },
     });
   });

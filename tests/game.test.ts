@@ -53,7 +53,7 @@ describe("createGame", () => {
   });
 
   it.each(Array.from({ length: 18 }, (_, index) => index + 3))("limits new games to the configured candidate maximum for %i players", (playerCount) => {
-    const maximum = Math.max(1, Math.floor((playerCount - 1) / 2));
+    const maximum = Math.max(2, Math.floor((playerCount - 1) / 2));
 
     expect(createGame(makePlayers(playerCount), { ...makeSettings(1), maxAttempts: maximum }).maxAttempts).toBe(maximum);
     expect(() => createGame(makePlayers(playerCount), { ...makeSettings(1), maxAttempts: maximum + 1 })).toThrow("Invalid attempt count");
@@ -122,6 +122,19 @@ describe("citizensWin", () => {
 });
 
 describe("resolveVote", () => {
+  it("gives a three-player crew a second vote after one wrong accusation", () => {
+    const game = createGame(makePlayers(3), { ...makeSettings(1), maxAttempts: 2 });
+    const wrongId = game.players.find(player => !game.impostorIds.includes(player.id))!.id;
+
+    game.accusedIds = [wrongId];
+    expect(resolveVote(game)).toBe("continue");
+    expect(game.attemptsUsed).toBe(1);
+
+    game.accusedIds = [game.impostorIds[0]];
+    expect(resolveVote(game)).toBe("result");
+    expect(citizensWin(game)).toBe(true);
+  });
+
   it("resolves one candidate per session and keeps prior votes unavailable", () => {
     const game = createGame(makePlayers(7), { ...makeSettings(2), maxAttempts: 3 });
     const wrongId = game.players.find(player => !game.impostorIds.includes(player.id))!.id;

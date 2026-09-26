@@ -5,7 +5,7 @@ import { assignBombLoser, bombExpired, createBombGame, rematchBomb, resolveBomb,
 import { createSameWaveGame, rematchSameWave, submitSameWavePick, type SameWaveGame } from './same-wave';
 import { buzzWhoAmI, createWhoAmIGame, nextWhoAmITurn, rematchWhoAmI, resolveWhoAmIGuess, visibleWhoAmIIdentities, type WhoAmIGame } from './who-am-i';
 import { WHO_AM_I_IDENTITIES } from './who-am-i-content';
-import { BOMB_CATEGORIES, BOMB_PROMPTS, type BombCategoryId } from './bomb-content';
+import { BOMB_CATEGORIES, bombPromptsForCategory, type BombCategoryId } from './bomb-content';
 import { SAME_WAVE_PROMPTS } from './same-wave-content';
 import { playBombExplosion, primeBombAudio } from './bomb-audio';
 import { gameCatalog, type GameId } from './catalog';
@@ -640,7 +640,7 @@ root.addEventListener('click', async e => {
       const players = d.players.filter(player => d.selectedIds.includes(player.id));
       if (d.selectedGameId === 'bomb') {
         const category = d.settings.bomb.category;
-        const prompts = category === 'all' ? BOMB_PROMPTS : BOMB_PROMPTS.filter(prompt => prompt.category === category);
+        const prompts = bombPromptsForCategory(category);
         d.activeGame = createBombGame(players, prompts[Math.floor(Math.random() * prompts.length)]);
       } else if (d.selectedGameId === 'same-wave') {
         d.activeGame = createSameWaveGame(players, SAME_WAVE_PROMPTS[Math.floor(Math.random() * SAME_WAVE_PROMPTS.length)]);
@@ -653,7 +653,7 @@ root.addEventListener('click', async e => {
       if (!game) return;
       if (game.gameId === 'bomb') {
         const category = d.settings.bomb.category;
-        const prompts = category === 'all' ? BOMB_PROMPTS : BOMB_PROMPTS.filter(prompt => prompt.category === category);
+        const prompts = bombPromptsForCategory(category);
         d.activeGame = rematchBomb(game, prompts);
       } else if (game.gameId === 'same-wave') d.activeGame = rematchSameWave(game, SAME_WAVE_PROMPTS);
       else if (game.gameId === 'who-am-i') d.activeGame = rematchWhoAmI(game, WHO_AM_I_IDENTITIES);

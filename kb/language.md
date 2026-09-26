@@ -8,7 +8,7 @@
 - `MessageKey` identifies UI copy; components call `translate(locale, key, params)` through the `t()` helper in `src/main.ts`.
 - `CategoryId` is language-neutral (`all` plus the 16 selectable category IDs). `WordEntry.category` stores one selectable ID. `GameSettings.category` stores `all`, one selectable ID, or a non-empty array of selectable IDs; it never stores display labels. `all` draws from the 15 standard categories; `spicy_18` requires explicit selection.
 - `categoryLabel(locale, id)` produces the visible category label.
-- `WordEntry` keeps both `word`/`hint` and `wordEn`/`hintEn`; `localizeEntry(entry, locale)` selects the visible values without mutating game state. The `hint` fields now supply the impostor's paired word; their names remain for saved-session compatibility. `src/spicy-18.ts` owns the 300 user-supplied Italian pairs and their English term translations.
+- `WordEntry` keeps both `word`/`hint` and `wordEn`/`hintEn`; `localizeEntry(entry, locale)` selects the visible values without mutating game state. The `hint` fields now supply the impostor's paired word; their names remain for saved-session compatibility. `src/spicy-18.ts` owns the 300 user-supplied Italian pairs and their English term translations. `src/bomb-content.ts` owns Bomba's bilingual prompts; its separate `spicy_18` category contains 150 Hot 18+ topics and stays out of the standard `all` draw unless selected directly.
 
 The locale lives once, in `AppData.language`. `Game` does not duplicate it. This prevents stale per-game locale state when users change language during an active round.
 

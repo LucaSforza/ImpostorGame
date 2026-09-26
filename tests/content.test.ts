@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { BOMB_CATEGORIES, BOMB_CATEGORY_IDS, BOMB_CATEGORY_LABELS, BOMB_PROMPTS } from "../src/bomb-content";
+import { BOMB_CATEGORIES, BOMB_CATEGORY_IDS, BOMB_CATEGORY_LABELS, BOMB_PROMPTS, bombPromptsForCategory } from "../src/bomb-content";
+import { defaultBombPrompts } from "../src/bomb";
 import { SAME_WAVE_PROMPTS } from "../src/same-wave-content";
 import { WHO_AM_I_IDENTITIES } from "../src/who-am-i-content";
 import { words } from "../src/words";
@@ -28,14 +29,27 @@ describe("Bomba content catalog", () => {
     expect(Object.keys(BOMB_CATEGORY_LABELS)).toHaveLength(BOMB_CATEGORY_IDS.length);
   });
 
+  it("keeps 150 Hot 18+ topics opt-in and out of All", () => {
+    const hotPrompts = BOMB_PROMPTS.filter((prompt) => prompt.category === "spicy_18");
+
+    expect(hotPrompts).toHaveLength(150);
+    expect(unique(hotPrompts.map((prompt) => prompt.id))).toBe(true);
+    expect(hotPrompts.every((prompt) => prompt.examples.length === 0 && prompt.examplesEn.length === 0)).toBe(true);
+    expect(bombPromptsForCategory("spicy_18")).toEqual(hotPrompts);
+    expect(bombPromptsForCategory("all").some((prompt) => prompt.category === "spicy_18")).toBe(false);
+    expect(defaultBombPrompts.some((prompt) => prompt.category === "spicy_18")).toBe(false);
+  });
+
   it("keeps every prompt complete, playable, translated, and uniquely identified", () => {
     expect(unique(BOMB_PROMPTS.map((prompt) => prompt.id))).toBe(true);
     for (const prompt of BOMB_PROMPTS) {
       expect(BOMB_CATEGORY_IDS).toContain(prompt.category);
       expect(prompt.topic.trim()).not.toBe("");
       expect(prompt.topicEn.trim()).not.toBe("");
-      expect(prompt.examples.length).toBeGreaterThanOrEqual(3);
-      expect(prompt.examplesEn.length).toBeGreaterThanOrEqual(3);
+      if (prompt.category !== "spicy_18") {
+        expect(prompt.examples.length).toBeGreaterThanOrEqual(3);
+        expect(prompt.examplesEn.length).toBeGreaterThanOrEqual(3);
+      }
       expect(prompt.examples.every((example) => example.trim())).toBe(true);
       expect(prompt.examplesEn.every((example) => example.trim())).toBe(true);
     }

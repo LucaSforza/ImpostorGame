@@ -1,5 +1,11 @@
 # Validation
 
+## Bomba Hot 18+ topics — 2026-09-27
+
+- Added 150 bilingual Hot 18+ prompts under a separate selectable category. Selecting All and default Bomba decks exclude these prompts; selecting Hot 18+ uses only that deck.
+- Automated checks pass: `npm test` reports 14 files and 105 tests; `npm run build` and `git diff --check` pass. Content coverage checks exact prompt count, unique IDs, translations, and exclusion from All/default decks.
+- Browser QA was not performed; setup rendering and live category selection remain unverified in a browser.
+
 ## Impostore Spicy 18+ and random rematches — 2026-09-27
 
 - Baseline `npm test`: 14 files, 101 tests passed. New regressions failed before the changes: repeated starter, unavailable `spicy_18`, zero adult pairs, and a rotated rather than shuffled participant order. All pass after the implementation.

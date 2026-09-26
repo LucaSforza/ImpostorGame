@@ -84,7 +84,7 @@ Existing hidden-role game remains behavior-compatible: 3–20 players, configura
 
 Two to twenty players choose a bilingual topic category such as technology and games. A round lasts a random 20–45 seconds while the app shows the bomb and topic; remaining time is secret, including to assistive technology. No countdown or progress indicator reveals the deadline. Players say valid, unused answers aloud and manage turns themselves; app has no pass button, holder state, microphone, or answer validation. At expiry, a short local explosion sound, animation, and accessible BOOM message announce group adjudication. Group selects the player caught by the explosion; selected player receives loss/negative result and every other participant wins. No statistic is recorded before selection. Reload resumes from the persisted absolute deadline or adjudication screen without replaying a completed explosion. A rematch keeps players and topic selection but chooses a new prompt and deadline. Sound failure must not block adjudication, and reduced-motion preferences disable the explosion animation.
 
-Bomb content is data-driven. Each `BombPrompt` has stable ID, category ID, Italian/English topic, and bilingual examples used only as optional inspiration before round starts. Runtime never downloads content.
+Bomb content is data-driven. Each `BombPrompt` has stable ID, category ID, and Italian/English topic; standard topics also have bilingual examples for optional inspiration. The separate Hot 18+ category contains 150 broad prompts, has no example answers, and joins a round only when explicitly selected. Runtime never downloads content.
 
 ### Stessa Onda
 

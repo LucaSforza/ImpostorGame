@@ -1,8 +1,8 @@
 import type { Player } from './db';
-import { BOMB_PROMPTS, type BombPrompt } from './bomb-content';
+import { bombPromptsForCategory, type BombPrompt } from './bomb-content';
 export type { BombPrompt } from './bomb-content';
 
-export const defaultBombPrompts: readonly BombPrompt[] = BOMB_PROMPTS;
+export const defaultBombPrompts: readonly BombPrompt[] = bombPromptsForCategory('all');
 export type BombPhase = 'playing' | 'assigning' | 'result';
 export interface BombGame {
   gameId: 'bomb'; id: string; players: Player[]; prompt: BombPrompt;

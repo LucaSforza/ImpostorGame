@@ -167,7 +167,48 @@ describe('Twit', () => {
   it('ships a unique, bilingual offline deck', () => {
     expect(TWIT_QUESTIONS.length).toBeGreaterThanOrEqual(40);
     expect(new Set(TWIT_QUESTIONS.map(q => q.id)).size).toBe(TWIT_QUESTIONS.length);
-    expect(TWIT_QUESTIONS.every(q => q.question.trim() && q.questionEn.trim() && Number.isSafeInteger(q.answer) && q.answer >= 0)).toBe(true);
+    expect(TWIT_QUESTIONS.every(q => q.question.trim() && q.questionEn.trim() && Number.isSafeInteger(q.answer) && q.answer >= 0 && q.answer <= 1_000_000_000)).toBe(true);
+  });
+
+  it('checks puzzle answers by enumerating squares, painted cubes, digits and routes', () => {
+    const answer = (id: string) => TWIT_QUESTIONS.find(q => q.id === id)!.answer;
+    let squares = 0; let rectangles = 0;
+    for (let width = 1; width <= 8; width += 1) {
+      for (let height = 1; height <= 8; height += 1) {
+        const placements = (9 - width) * (9 - height);
+        rectangles += placements;
+        if (width === height) squares += placements;
+      }
+    }
+    expect(answer('chess-squares')).toBe(squares);
+    expect(answer('chess-rectangles')).toBe(rectangles);
+    let painted = 0;
+    for (let x = 0; x < 10; x += 1) for (let y = 0; y < 10; y += 1) for (let z = 0; z < 10; z += 1) {
+      if ([x, y, z].filter(v => v === 0 || v === 9).length === 2) painted += 1;
+    }
+    expect(answer('painted-cube')).toBe(painted);
+    const pages = Array.from({ length: 1000 }, (_, i) => String(i + 1));
+    expect(answer('numbered-pages')).toBe(pages.join('').length);
+    expect(answer('digit-nine')).toBe(pages.slice(0, 100).join('').split('9').length - 1);
+    const routes = [1, 1];
+    for (let steps = 2; steps <= 20; steps += 1) routes.push(routes[steps - 1] + routes[steps - 2]);
+    expect(answer('stairs-routes')).toBe(routes[20]);
+    const grid = Array.from({ length: 7 }, () => Array<number>(7).fill(1));
+    for (let x = 1; x <= 6; x += 1) for (let y = 1; y <= 6; y += 1) grid[x][y] = grid[x - 1][y] + grid[x][y - 1];
+    expect(answer('grid-routes')).toBe(grid[6][6]);
+  });
+
+  it('keeps retired easy questions and their answers in already saved matches', async () => {
+    const oldQuestion = { id: 'planets', question: 'Quanti pianeti ci sono nel Sistema Solare?', questionEn: 'How many planets are in the Solar System?', answer: 8 };
+    const g = createTwitGame(players(), 1, [oldQuestion], () => 0);
+    expect(TWIT_QUESTIONS.some(q => q.id === oldQuestion.id)).toBe(false);
+    answerRound(g, [7, 8, 6]);
+    await saveData(snapshot(g));
+    const restored = (await loadData<TwitGame>())!.activeGame!;
+    expect(restored).toEqual(g);
+    expect(twitTotals(restored)).toEqual({ p0: 1, p1: 3, p2: 0 });
+    const next = rematchTwit(restored);
+    expect(TWIT_QUESTIONS.some(q => q.id === next.rounds[0].question.id)).toBe(true);
   });
 
   it('preserves the prior Twit snapshot when a write cannot be cloned', async () => {

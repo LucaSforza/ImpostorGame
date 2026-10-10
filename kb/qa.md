@@ -1,5 +1,13 @@
 # Validation
 
+## Twit harder default deck — 2026-10-11
+
+- Baseline: 127 tests passed. This is an editorial deck revision, not a functional bug fix. Final gates: 129 tests, production build, and `git diff --check` passed. Rules, random turns, UI, and persistence implementation are unchanged.
+- Reviewed 60 IT/EN questions: 31 sourced trivia facts and 29 numerical puzzles. Verified all 29 puzzle targets independently with Python arithmetic/combinations/calendar checks; also checked caesium unit conversion, tennis minutes/game totals, and boiler addition. Source links and approximation conventions are in [language](language.md). Existing topic IDs remain stable; different topics have new descriptive IDs.
+- New tests independently enumerate chess squares/rectangles, painted edge cubes, digit counts, staircase routes, and grid routes. A retired `planets` question with answer 8 survives storage/result scoring; its rematch draws the revised deck. Every release answer fits the input limit.
+- Browser QA on isolated local origin restored the older IPv4 question unchanged, then started a new match with the light-speed question. Italian/English projection passed. At 320 × 740, public question width was 305 px within 320 px; at 390 × 844, private form width was 390 px. A 300,000,000 estimate submitted successfully, concealed the form, and advanced to Ada; reload kept that next player. Console had no warnings/errors.
+- This content-focused run sampled one new question, not every question or the longest wording. It did not repeat a complete match, blur checks, or physical-device QA.
+
 ## Twit random turns — 2026-10-11
 
 - Baseline: 124 tests passed. New regression failed against unchanged production code: rounds lacked the expected shuffled `turnOrder` (12 existing Twit tests passed, one failed). After implementation, all 127 tests, production build, and `git diff --check` passed.

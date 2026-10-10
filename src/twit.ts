@@ -4,7 +4,7 @@ import { TWIT_QUESTIONS, type TwitQuestion } from './twit-content';
 export const TWIT_ROUND_COUNTS = [1, 3, 5, 10] as const;
 export const MAX_TWIT_ESTIMATE = 1_000_000_000;
 export interface TwitAnswer { estimate: number; predictedId: string; }
-export interface TwitRound { question: TwitQuestion; answers: Record<string, TwitAnswer>; }
+export interface TwitRound { question: TwitQuestion; answers: Record<string, TwitAnswer>; turnOrder?: string[]; }
 export interface TwitGame {
   gameId: 'twit';
   id: string;
@@ -43,11 +43,26 @@ export function createTwitGame(players: Player[], roundCount = 5, questions: rea
     const j = i + randomIndex(deck.length - i, random);
     [deck[i], deck[j]] = [deck[j], deck[i]];
   }
+  const participants = structuredClone([...players.slice(start), ...players.slice(0, start)]);
   return {
-    gameId: 'twit', id: crypto.randomUUID(), players: structuredClone([...players.slice(start), ...players.slice(0, start)]),
-    rounds: deck.slice(0, roundCount).map(question => ({ question: structuredClone(question), answers: {} })),
+    gameId: 'twit', id: crypto.randomUUID(), players: participants,
+    rounds: deck.slice(0, roundCount).map((question, index) => {
+      const turnOrder = participants.map(p => p.id);
+      // Keep the already drawn first starter; shuffle everyone on later rounds.
+      for (let i = index === 0 ? 1 : 0; i < turnOrder.length - 1; i += 1) {
+        const j = i + randomIndex(turnOrder.length - i, random);
+        [turnOrder[i], turnOrder[j]] = [turnOrder[j], turnOrder[i]];
+      }
+      return { question: structuredClone(question), answers: {}, turnOrder };
+    }),
     roundIndex: 0, turnIndex: 0, phase: 'question', winnerIds: [], scoreRecorded: false,
   };
+}
+
+export function twitCurrentPlayer(game: TwitGame): Player | undefined {
+  // Older matches have no per-round order; retain their saved participant sequence.
+  const order = game.rounds[game.roundIndex].turnOrder;
+  return order ? game.players.find(p => p.id === order[game.turnIndex]) : game.players[game.turnIndex];
 }
 
 export function startTwitRound(game: TwitGame): boolean {
@@ -82,7 +97,7 @@ function winners(game: TwitGame): string[] {
 }
 
 export function submitTwitAnswer(game: TwitGame, playerId: string, estimate: number, predictedId: string): boolean {
-  if (game.phase !== 'answering' || game.players[game.turnIndex]?.id !== playerId || !validEstimate(estimate)
+  if (game.phase !== 'answering' || twitCurrentPlayer(game)?.id !== playerId || !validEstimate(estimate)
     || playerId === predictedId || !game.players.some(p => p.id === predictedId)) return false;
   const round = game.rounds[game.roundIndex];
   if (Object.hasOwn(round.answers, playerId)) return false;
@@ -132,8 +147,10 @@ export function isTwitGameSnapshot(value: Record<string, unknown>): boolean {
     const round: unknown = value.rounds[index];
     if (!record(round) || !validQuestion(round.question) || !record(round.answers) || questionIds.has(round.question.id)) return false;
     questionIds.add(round.question.id);
+    const order = round.turnOrder === undefined ? ids : round.turnOrder;
+    if (!Array.isArray(order) || order.length !== ids.length || new Set(order).size !== ids.length || !order.every(id => ids.includes(id))) return false;
     const count = index < (value.roundIndex as number) ? ids.length : index > (value.roundIndex as number) ? 0 : value.turnIndex as number;
-    if (Object.keys(round.answers).length !== count || !ids.slice(0, count).every(id => Object.hasOwn(round.answers as object, id))) return false;
+    if (Object.keys(round.answers).length !== count || !order.slice(0, count).every(id => Object.hasOwn(round.answers as object, id))) return false;
     for (const [id, answer] of Object.entries(round.answers)) {
       if (!ids.includes(id) || !record(answer) || !validEstimate(answer.estimate) || typeof answer.predictedId !== 'string'
         || !ids.includes(answer.predictedId) || answer.predictedId === id) return false;

@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it } from 'vitest';
 import { emptyPlayerStats, loadData, saveData, type AppData, type Player } from '../src/db';
-import { createTwitGame, startTwitRound, submitTwitAnswer, nextTwitRound, twitRoundResult, twitTotals, rematchTwit, type TwitGame } from '../src/twit';
+import { createTwitGame, startTwitRound, submitTwitAnswer, nextTwitRound, twitCurrentPlayer, twitRoundResult, twitTotals, rematchTwit, type TwitGame } from '../src/twit';
 import { TWIT_QUESTIONS } from '../src/twit-content';
 import { recordActiveGameResult, totalStats } from '../src/stats';
 
@@ -52,6 +52,58 @@ describe('Twit', () => {
     expect(submitTwitAnswer(g, 'p0', 0, 'p2')).toBe(true);
     expect(submitTwitAnswer(g, 'p0', 90, 'p2')).toBe(false);
     expect(g.turnIndex).toBe(1); expect(g.winnerIds).toEqual([]);
+  });
+
+  it('randomizes remaining players and draws a fresh order each round', async () => {
+    const draws = [0, 0, 0, 0, 0.99, 0.99, 0, 0, 0];
+    const g = createTwitGame(players(), 3, questions, () => draws.shift() ?? 0);
+    expect(g.rounds[0]).toMatchObject({ turnOrder: ['p0', 'p2', 'p1'] });
+    expect(g.rounds[1]).toMatchObject({ turnOrder: ['p2', 'p1', 'p0'] });
+    startTwitRound(g);
+    expect(submitTwitAnswer(g, 'p0', 90, 'p2')).toBe(true);
+    expect(submitTwitAnswer(g, 'p1', 110, 'p2')).toBe(false);
+    await saveData(snapshot(g));
+    const restored = (await loadData<TwitGame>())!.activeGame!;
+    expect(restored).toEqual(g);
+    expect(twitCurrentPlayer(restored)?.id).toBe('p2');
+    expect(submitTwitAnswer(restored, 'p2', 50, 'p0')).toBe(true);
+    expect(submitTwitAnswer(restored, 'p1', 110, 'p2')).toBe(true);
+    expect(twitTotals(restored)).toEqual({ p0: 3, p1: 3, p2: 0 });
+    nextTwitRound(restored);
+    expect(twitCurrentPlayer(restored)?.id).toBe('p2');
+    startTwitRound(restored);
+    expect(submitTwitAnswer(restored, 'p0', 100, 'p2')).toBe(false);
+    expect(submitTwitAnswer(restored, 'p2', 100, 'p0')).toBe(true);
+  });
+
+  it('resumes older matches without reshuffling answered or future turns', async () => {
+    const g = game(3);
+    g.rounds.forEach(round => { delete round.turnOrder; });
+    startTwitRound(g); submitTwitAnswer(g, 'p0', 90, 'p2');
+    await saveData(snapshot(g));
+    const restored = (await loadData<TwitGame>())!.activeGame!;
+    expect(restored).toEqual(g);
+    expect(twitCurrentPlayer(restored)?.id).toBe('p1');
+    expect(submitTwitAnswer(restored, 'p1', 110, 'p2')).toBe(true);
+    expect(submitTwitAnswer(restored, 'p2', 50, 'p0')).toBe(true);
+    nextTwitRound(restored); answerRound(restored);
+    nextTwitRound(restored); answerRound(restored);
+    expect(twitTotals(restored)).toEqual({ p0: 9, p1: 9, p2: 0 });
+    await saveData(snapshot(restored));
+    expect((await loadData<TwitGame>())!.activeGame).toEqual(restored);
+  });
+
+  it('rejects malformed turn orders and answers outside their chosen prefix', async () => {
+    for (const order of [null, ['p0', 'p1'], ['p0', 'p1', 'p1'], ['p0', 'p1', 'outsider']]) {
+      const g = game();
+      Object.assign(g.rounds[0], { turnOrder: order });
+      await saveData(snapshot(g));
+      await expect(loadData()).resolves.toBeNull();
+    }
+    const g = game(); startTwitRound(g); submitTwitAnswer(g, 'p0', 90, 'p2');
+    g.rounds[0].turnOrder = ['p2', 'p0', 'p1'];
+    await saveData(snapshot(g));
+    await expect(loadData()).resolves.toBeNull();
   });
 
   it('awards +2 to tied closest estimates and +1 to correct worst predictions', () => {

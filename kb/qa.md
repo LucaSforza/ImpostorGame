@@ -1,5 +1,12 @@
 # Validation
 
+## Twit random turns — 2026-10-11
+
+- Baseline: 124 tests passed. New regression failed against unchanged production code: rounds lacked the expected shuffled `turnOrder` (12 existing Twit tests passed, one failed). After implementation, all 127 tests, production build, and `git diff --check` passed.
+- Coverage proves an out-of-roster-order next player is required, saved order survives an interrupted round, later rounds choose independently, points still follow player IDs, old snapshots without orders finish unchanged, and malformed orders/answered prefixes are rejected.
+- Local browser at 390 × 844 called Bruno → Ada → Carla, concealed each form, and retained Ada after mid-round reload. Round awards remained Bruno/Ada +3, Carla +0. Round 2 chose Ada as reader and first private holder rather than following the roster rotation. At 320 × 740, reload retained Ada; document width 305 px stayed within the 320 px viewport. No console warnings/errors.
+- This focused run did not repeat the entire three-round browser match, language/blur checks, or physical-device QA; prior release evidence below remains applicable.
+
 ## Twit release — 2026-10-11
 
 - Baseline: 14 files, 110 tests passed. Before production edits, three assertions failed because catalog lacked Twit and old snapshots lacked Twit defaults. New rules tests were written before the module; initial suite could not import the not-yet-created feature. Final gates: `npm test` (16 files, 124 tests), `npm run build`, and `git diff --check` passed.

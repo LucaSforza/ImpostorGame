@@ -2,7 +2,7 @@
 
 Pocket Circle offers Impostore, Bomba, Stessa Onda, Chi sono?, and Twit. Saved player profiles are shared across all games. Each completed session records per-game statistics once; exiting before result records nothing.
 
-Every new game and rematch randomly chooses the first player. Impostore shuffles the full participant order and excludes the previous starter on rematch, so consecutive rounds cannot have the same order. Other games rotate the saved participant order around a randomly chosen starter, preserving the remaining circular order. The shared roster stays unchanged. Session order persists through reload, language changes, and screen rendering. In Impostore the same player starts the private reveal and discussion; in Bomba the screen names who starts answering; in Stessa Onda that player makes the first private choice; in Chi sono? that player first views the other identities and asks the first question.
+Every new game and rematch randomly chooses the first player. Impostore shuffles the full participant order and excludes the previous starter on rematch, so consecutive rounds cannot have the same order. Bomba, Stessa Onda, and Chi sono? rotate the saved participant order around a randomly chosen starter, preserving the remaining circular order. Twit independently shuffles turns for each round. The shared roster stays unchanged. Session order persists through reload, language changes, and screen rendering. In Impostore the same player starts the private reveal and discussion; in Bomba the screen names who starts answering; in Stessa Onda that player makes the first private choice; in Chi sono? that player first views the other identities and asks the first question.
 
 ## Impostore
 
@@ -62,10 +62,12 @@ When a result is revealed, every participant receives exactly one recorded game 
 
 ## Twit
 
-1. Select 3–20 shared profiles and 1, 3, 5 (default), or 10 rounds. App rotates participants around a random starter, snapshots players and unique bilingual questions, and keeps that private answer order throughout the match.
-2. A reader, rotating each round, reads the question aloud. The correct number stays hidden.
+1. Select 3–20 shared profiles and 1, 3, 5 (default), or 10 rounds. App snapshots players, unique bilingual questions, and an independently shuffled turn order for every round. Each participant answers exactly once per round; the app names the next randomly chosen holder after each answer. Saved orders survive reload and language changes.
+2. The first player in each round's drawn order reads the question aloud, then answers first. The correct number stays hidden.
 3. Pass the phone privately. Each player enters a whole-number estimate from 0 through 1,000,000,000 and predicts which other player will be farthest from the correct answer. Own-player predictions are forbidden. Confirming saves both choices and immediately conceals the form before handing over. Reload, language change, blur, pagehide, and hidden visibility conceal open forms; unfinished drafts are discarded.
 4. After everyone answers, reveal the correct number, estimates, absolute distances, predictions, round awards, and total standings. Every closest estimate earns +2. Predicting any player tied for farthest earns +1. If every estimate is identical, everyone earns +3. No penalty for being farthest.
 5. Continue through all rounds. Highest total wins; tied leaders all win. Only final results record wins/losses once. Abandoned matches never score. Rematch keeps players and round count, draws a new starter, and avoids previous questions whenever enough unused questions remain.
 
 Video source establishes +2 closest / +1 correct farthest prediction. Match length and tie policy were absent from the recording; the UI explicitly explains the chosen defaults.
+
+Compatibility: matches saved before per-round shuffling retain their existing participant sequence through completion. New games and rematches use shuffled turns.

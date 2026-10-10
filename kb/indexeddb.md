@@ -96,6 +96,7 @@ classDiagram
   class TwitRound {
     +TwitQuestion question
     +Record answers
+    +string[] turnOrder
   }
   class TwitAnswer {
     +number estimate
@@ -133,4 +134,4 @@ Saved game content is validated structurally and remains independent of later ed
 
 The data is local-only: it stays in the page origin's IndexedDB and is not synchronized with a server or remote database. Clearing site data deletes saved players, settings, and the active game. Availability depends on the browser's IndexedDB support and permissions.
 
-Snapshots predating Twit gain zero `stats.twit` counters and `settings.twit.rounds: 5`. Both canonical and session profiles normalize counters; existing profiles, totals, photo avatars, and all four prior game sessions survive. The physical database stays unchanged. Twit validation checks unique bilingual question IDs, integer answer bounds, exact answered-player prefixes, empty future rounds, valid other-player predictions, phase/round progress, final computed winners, and result-only score recording. Catalog wording is never used to validate saved questions.
+Snapshots predating Twit gain zero `stats.twit` counters and `settings.twit.rounds: 5`. Both canonical and session profiles normalize counters; existing profiles, totals, photo avatars, and all four prior game sessions survive. The physical database stays unchanged. Twit validation checks unique bilingual question IDs, integer answer bounds, exact answered-player prefixes in each round's `turnOrder`, empty future rounds, valid other-player predictions, phase/round progress, final computed winners, and result-only score recording. Each order must contain every participant ID exactly once. Earlier Twit snapshots omit `turnOrder` and retain their saved `players` sequence. Catalog wording is never used to validate saved questions.

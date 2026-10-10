@@ -5,7 +5,7 @@ import { assignBombLoser, bombExpired, createBombGame, rematchBomb, resolveBomb,
 import { createSameWaveGame, rematchSameWave, submitSameWavePick, type SameWaveGame } from './same-wave';
 import { buzzWhoAmI, createWhoAmIGame, nextWhoAmITurn, rematchWhoAmI, resolveWhoAmIGuess, visibleWhoAmIIdentities, type WhoAmIGame } from './who-am-i';
 import { WHO_AM_I_IDENTITIES } from './who-am-i-content';
-import { createTwitGame, startTwitRound, submitTwitAnswer, nextTwitRound, twitRoundResult, twitTotals, rematchTwit, TWIT_ROUND_COUNTS, MAX_TWIT_ESTIMATE, type TwitGame } from './twit';
+import { createTwitGame, startTwitRound, submitTwitAnswer, nextTwitRound, twitCurrentPlayer, twitRoundResult, twitTotals, rematchTwit, TWIT_ROUND_COUNTS, MAX_TWIT_ESTIMATE, type TwitGame } from './twit';
 import { TWIT_QUESTIONS } from './twit-content';
 import { BOMB_CATEGORIES, bombPromptsForCategory, type BombCategoryId } from './bomb-content';
 import { SAME_WAVE_PROMPTS } from './same-wave-content';
@@ -341,11 +341,11 @@ function twitGameView(g: TwitGame): string {
   const number = (value: number) => new Intl.NumberFormat(data.language).format(value);
   const top = `<div class="round-top">${button('exit', '←', 'icon-btn')}<span class="eyebrow">${gameName('twit')}</span><span class="count">${t('twit.round', { current: g.roundIndex + 1, total: g.rounds.length })}</span></div>`;
   if (g.phase === 'question') {
-    const reader = g.players[g.roundIndex % g.players.length];
+    const reader = twitCurrentPlayer(g)!;
     return `${top}<section class="game-screen live-card"><span class="big-symbol" aria-hidden="true">🎯</span><p class="eyebrow">${t('twit.read', { name: escape(reader.name) })}</p><h1 class="twit-question">${escape(question)}</h1><p class="helper">${t('twit.question.helper')}</p>${button('twit-begin', t('twit.begin'))}</section>`;
   }
   if (g.phase === 'answering') {
-    const player = g.players[g.turnIndex];
+    const player = twitCurrentPlayer(g)!;
     const choices = g.players.filter(p => p.id !== player.id).map(p => `<option value="${escape(p.id)}">${escape(p.name)}</option>`).join('');
     const form = `<form id="twit-form"><h2 class="twit-question">${escape(question)}</h2><label for="twit-estimate">${t('twit.estimate')}</label><input id="twit-estimate" name="estimate" type="text" inputmode="numeric" pattern="[0-9]{1,10}" maxlength="10" required autocomplete="off" aria-describedby="twit-estimate-hint"/><p id="twit-estimate-hint" class="footnote">${t('twit.estimateHint')}</p><label for="twit-prediction">${t('twit.predict')}</label><select id="twit-prediction" name="prediction" required><option value="" disabled selected>${t('twit.select')}</option>${choices}</select><p id="twit-form-error" class="error" role="alert"></p><button class="primary" type="submit">${t('twit.submit')} <span>→</span></button></form>`;
     return `${top}<section class="game-screen live-card"><p class="eyebrow">${t('sameWave.pass')}</p><h1>${escape(player.name)}</h1><p class="helper">${t('sameWave.noPeeking')}</p>${revealed ? form : `<div class="secret-card">${avatarArt(player.avatar)}</div>${button('reveal', `${t('game.iAm')} ${escape(player.name)} · ${t('twit.reveal')}`)}`}<p class="footnote">${g.turnIndex + 1} ${t('game.of')} ${g.players.length} · ${t('game.appHidesSecret')}</p></section>`;
@@ -566,7 +566,7 @@ root.addEventListener('submit', async e => {
     const raw = root.querySelector<HTMLInputElement>('#twit-estimate')!.value.trim();
     const estimate = Number(raw);
     const predictedId = root.querySelector<HTMLSelectElement>('#twit-prediction')!.value;
-    const playerId = game.players[game.turnIndex].id;
+    const playerId = twitCurrentPlayer(game)!.id;
     if (!/^\d+$/.test(raw) || !Number.isSafeInteger(estimate) || estimate < 0 || estimate > MAX_TWIT_ESTIMATE
       || predictedId === playerId || !game.players.some(p => p.id === predictedId)) {
       root.querySelector('#twit-form-error')!.textContent = t('twit.invalid');

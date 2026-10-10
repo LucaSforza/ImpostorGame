@@ -173,9 +173,9 @@ describe('Twit', () => {
   it('checks puzzle answers by enumerating squares, painted cubes, digits and routes', () => {
     const answer = (id: string) => TWIT_QUESTIONS.find(q => q.id === id)!.answer;
     let squares = 0; let rectangles = 0;
-    for (let width = 1; width <= 8; width += 1) {
-      for (let height = 1; height <= 8; height += 1) {
-        const placements = (9 - width) * (9 - height);
+    for (let width = 1; width <= 5; width += 1) {
+      for (let height = 1; height <= 5; height += 1) {
+        const placements = (6 - width) * (6 - height);
         rectangles += placements;
         if (width === height) squares += placements;
       }
@@ -183,19 +183,19 @@ describe('Twit', () => {
     expect(answer('chess-squares')).toBe(squares);
     expect(answer('chess-rectangles')).toBe(rectangles);
     let painted = 0;
-    for (let x = 0; x < 10; x += 1) for (let y = 0; y < 10; y += 1) for (let z = 0; z < 10; z += 1) {
-      if ([x, y, z].filter(v => v === 0 || v === 9).length === 2) painted += 1;
+    for (let x = 0; x < 4; x += 1) for (let y = 0; y < 4; y += 1) for (let z = 0; z < 4; z += 1) {
+      if ([x, y, z].filter(v => v === 0 || v === 3).length === 2) painted += 1;
     }
     expect(answer('painted-cube')).toBe(painted);
-    const pages = Array.from({ length: 1000 }, (_, i) => String(i + 1));
+    const pages = Array.from({ length: 100 }, (_, i) => String(i + 1));
     expect(answer('numbered-pages')).toBe(pages.join('').length);
-    expect(answer('digit-nine')).toBe(pages.slice(0, 100).join('').split('9').length - 1);
+    expect(answer('digit-nine')).toBe(pages.join('').split('9').length - 1);
     const routes = [1, 1];
-    for (let steps = 2; steps <= 20; steps += 1) routes.push(routes[steps - 1] + routes[steps - 2]);
-    expect(answer('stairs-routes')).toBe(routes[20]);
-    const grid = Array.from({ length: 7 }, () => Array<number>(7).fill(1));
-    for (let x = 1; x <= 6; x += 1) for (let y = 1; y <= 6; y += 1) grid[x][y] = grid[x - 1][y] + grid[x][y - 1];
-    expect(answer('grid-routes')).toBe(grid[6][6]);
+    for (let steps = 2; steps <= 6; steps += 1) routes.push(routes[steps - 1] + routes[steps - 2]);
+    expect(answer('stairs-routes')).toBe(routes[6]);
+    const grid = Array.from({ length: 4 }, () => Array<number>(4).fill(1));
+    for (let x = 1; x <= 3; x += 1) for (let y = 1; y <= 3; y += 1) grid[x][y] = grid[x - 1][y] + grid[x][y - 1];
+    expect(answer('grid-routes')).toBe(grid[3][3]);
   });
 
   it('keeps retired easy questions and their answers in already saved matches', async () => {
@@ -209,6 +209,24 @@ describe('Twit', () => {
     expect(twitTotals(restored)).toEqual({ p0: 1, p1: 3, p2: 0 });
     const next = rematchTwit(restored);
     expect(TWIT_QUESTIONS.some(q => q.id === next.rounds[0].question.id)).toBe(true);
+  });
+
+  it.each([
+    { id: 'light-speed', question: 'Quanti metri percorre la luce nel vuoto in un secondo, esattamente?', questionEn: 'Exactly how many metres does light travel in a vacuum in one second?', answer: 299792458 },
+    { id: 'chess-squares', question: 'Quanti quadrati contiene una scacchiera 8 × 8?', questionEn: 'How many squares are in an 8 × 8 chessboard?', answer: 204 },
+  ])('keeps the prior hard question $id when loading and scoring a saved match', async oldQuestion => {
+    const g = createTwitGame(players(), 1, [oldQuestion], () => 0);
+    expect(TWIT_QUESTIONS.find(q => q.id === oldQuestion.id)?.answer).not.toBe(oldQuestion.answer);
+    expect(startTwitRound(g)).toBe(true);
+    expect(submitTwitAnswer(g, 'p0', oldQuestion.answer - 1, 'p2')).toBe(true);
+    await saveData(snapshot(g));
+    const restored = (await loadData<TwitGame>())!.activeGame!;
+    expect(restored).toEqual(g);
+    expect(submitTwitAnswer(restored, 'p1', oldQuestion.answer, 'p2')).toBe(true);
+    expect(submitTwitAnswer(restored, 'p2', oldQuestion.answer - 2, 'p0')).toBe(true);
+    expect(twitTotals(restored)).toEqual({ p0: 1, p1: 3, p2: 0 });
+    const next = rematchTwit(restored);
+    expect(TWIT_QUESTIONS).toContainEqual(next.rounds[0].question);
   });
 
   it('preserves the prior Twit snapshot when a write cannot be cloned', async () => {

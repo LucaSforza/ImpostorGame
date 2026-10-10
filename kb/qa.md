@@ -1,5 +1,13 @@
 # Validation
 
+## Twit balanced default deck — 2026-10-11
+
+- Baseline: 129 tests passed. Editorial revision only; no gameplay, random-turn, UI, or persistence implementation changes. Final gates: 131 tests, production build, and `git diff --check` passed.
+- Rebalanced all 60 IT/EN questions into 36 familiar trivia facts and 24 short mental puzzles. Removed specialist constants, engineering inventories, huge combinations, and long growth calculations. Independently checked all 24 puzzle targets with Python arithmetic/combinations/calendar checks; updated enumerations for smaller grids, cubes, pages, and stairs. Sources and approximation conventions are in [language](language.md). Difficulty remains an editorial judgement, awaiting group playtesting.
+- Added storage/scoring coverage for a retired light-speed question and the old 8 × 8 square question sharing a revised ID. Both keep their saved text, target, answers, and totals after a mid-round reload; rematches draw the current deck. Earlier easy-deck compatibility still passes.
+- Browser on isolated local origin restored the prior light-speed question unchanged, then drew the new four-pizza-cuts question. Public and private IT/EN wording passed. At 320 × 740, document width was 305 px and private form 231 px; at 390 × 844, document width was 375 px. Submitting an estimate of 12 concealed the form, called Bruno after Carla, and kept Bruno after reload. Console had no warnings/errors.
+- Sampled one new puzzle, not all 60 questions. Did not repeat a complete browser match, physical-device QA, or blur checks. Existing automated gameplay/privacy coverage remains green. Public deployment is verified after push separately.
+
 ## Twit harder default deck — 2026-10-11
 
 - Baseline: 127 tests passed. This is an editorial deck revision, not a functional bug fix. Final gates: 129 tests, production build, and `git diff --check` passed. Rules, random turns, UI, and persistence implementation are unchanged.

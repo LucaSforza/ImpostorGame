@@ -4,6 +4,7 @@ import { availableWords, isCategorySelection, normalizeCategory, type WordEntry 
 import type { BombGame } from './bomb';
 import type { SameWaveGame } from './same-wave';
 import type { WhoAmIGame } from './who-am-i';
+import type { TwitGame } from './twit';
 
 export interface ImpostorGame {
   gameId: 'impostor';
@@ -24,7 +25,7 @@ export interface ImpostorGame {
 }
 
 export type Game = ImpostorGame;
-export type ActiveGame = ImpostorGame | BombGame | SameWaveGame | WhoAmIGame;
+export type ActiveGame = ImpostorGame | BombGame | SameWaveGame | WhoAmIGame | TwitGame;
 export interface LocalizedEntry { word: string; hint: string; category: string; }
 export function maxImpostors(count: number): number { return Math.max(1, Math.floor((count - 1) / 2)); }
 export function minAttempts(_playerCount: number, impostorCount: number): number { return Math.max(1, impostorCount); }

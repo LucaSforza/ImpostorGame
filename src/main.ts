@@ -5,6 +5,8 @@ import { assignBombLoser, bombExpired, createBombGame, rematchBomb, resolveBomb,
 import { createSameWaveGame, rematchSameWave, submitSameWavePick, type SameWaveGame } from './same-wave';
 import { buzzWhoAmI, createWhoAmIGame, nextWhoAmITurn, rematchWhoAmI, resolveWhoAmIGuess, visibleWhoAmIIdentities, type WhoAmIGame } from './who-am-i';
 import { WHO_AM_I_IDENTITIES } from './who-am-i-content';
+import { createTwitGame, startTwitRound, submitTwitAnswer, nextTwitRound, twitRoundResult, twitTotals, rematchTwit, TWIT_ROUND_COUNTS, MAX_TWIT_ESTIMATE, type TwitGame } from './twit';
+import { TWIT_QUESTIONS } from './twit-content';
 import { BOMB_CATEGORIES, bombPromptsForCategory, type BombCategoryId } from './bomb-content';
 import { SAME_WAVE_PROMPTS } from './same-wave-content';
 import { playBombExplosion, primeBombAudio } from './bomb-audio';
@@ -50,6 +52,7 @@ import impostorGameImage from './assets/games/impostore.webp';
 import bombGameImage from './assets/games/bomba.webp';
 import sameWaveGameImage from './assets/games/stessa-onda.webp';
 import whoAmIGameImage from './assets/games/who-am-i.webp';
+import twitGameImage from './assets/games/twit.svg';
 
 const root = document.querySelector<HTMLDivElement>('#app')!;
 const avatars = [
@@ -84,7 +87,7 @@ const legacyAvatarMap: Record<string, AvatarId> = {
 };
 let data: AppData<ActiveGame> = {
   players: [], selectedIds: [], selectedGameId: 'impostor',
-  settings: { impostor: { impostors: 1, maxAttempts: 1, category: 'all' }, bomb: { category: 'all' }, sameWave: { category: 'all' }, whoAmI: { category: 'all' } },
+  settings: { impostor: { impostors: 1, maxAttempts: 1, category: 'all' }, bomb: { category: 'all' }, sameWave: { category: 'all' }, whoAmI: { category: 'all' }, twit: { rounds: 5 } },
   activeGame: null, language: 'it',
 };
 let revealed = false;
@@ -202,7 +205,7 @@ function impostorSetup(): string {
   <p class="footnote">${count < 3 ? t(3 - count === 1 ? 'setup.morePlayersOne' : 'setup.morePlayersMany', { count: 3 - count }) : t('setup.passSecrets')}</p></section>`;
 }
 
-const gameImages: Record<GameId, string> = { impostor: impostorGameImage, bomb: bombGameImage, 'same-wave': sameWaveGameImage, 'who-am-i': whoAmIGameImage };
+const gameImages: Record<GameId, string> = { impostor: impostorGameImage, bomb: bombGameImage, 'same-wave': sameWaveGameImage, 'who-am-i': whoAmIGameImage, twit: twitGameImage };
 const gameName = (id: GameId) => t(`catalog.${id === 'same-wave' ? 'sameWave' : id === 'who-am-i' ? 'whoAmI' : id}.name` as MessageKey);
 
 function catalogView(): string {
@@ -238,6 +241,7 @@ function setup(): string {
   if (data.selectedGameId === 'bomb') return bombSetup();
   if (data.selectedGameId === 'same-wave') return sameWaveSetup();
   if (data.selectedGameId === 'who-am-i') return whoAmISetup();
+  if (data.selectedGameId === 'twit') return `${gameSetupHeader('twit')}${setupRoster(3)}<section class="setup"><p class="helper">${t('twit.setup.helper')}</p><label for="twit-rounds">${t('twit.rounds')}</label><select id="twit-rounds">${TWIT_ROUND_COUNTS.map(count => `<option value="${count}" ${data.settings.twit.rounds === count ? 'selected' : ''}>${t('twit.roundCount', { count })}</option>`).join('')}</select><p class="footnote">${t('twit.deck', { count: TWIT_QUESTIONS.length })}</p>${button('start', `${t('game.start')} <span>↗</span>`, 'primary', data.selectedIds.length < 3 || !storageReady)}</section>`;
   return `${gameSetupHeader('impostor')}${impostorSetup()}`;
 }
 
@@ -331,10 +335,41 @@ function whoAmIGameView(g: WhoAmIGame): string {
   return `${top}<section class="game-screen live-card"><p class="eyebrow">${t('whoAmI.turn.eyebrow')}</p><h1>${t('whoAmI.turn.title', { name: escape(player.name) })}</h1><p class="helper">${buzzed ? t('whoAmI.buzz.helper') : t('whoAmI.turn.helper')}</p>${buzzed ? `<h2 class="answer">${t('whoAmI.buzz.identity', { identity: escape(revealedIdentity) })}</h2>` : ''}${button(action, label, 'primary', false)}${buzzed ? button('who-wrong', t('whoAmI.buzz.wrong'), 'secondary') : button('who-next', t('whoAmI.turn.next'), 'secondary')}<div class="players">${g.players.filter((candidate) => !g.eliminatedIds.includes(candidate.id)).map((candidate) => `<div class="player"><span>${escape(candidate.name)}</span>${candidate.id === player.id ? `<strong>${t('whoAmI.turn.current')}</strong>` : ''}</div>`).join('')}</div></section>`;
 }
 
+function twitGameView(g: TwitGame): string {
+  const round = g.rounds[g.roundIndex];
+  const question = data.language === 'it' ? round.question.question : round.question.questionEn;
+  const number = (value: number) => new Intl.NumberFormat(data.language).format(value);
+  const top = `<div class="round-top">${button('exit', '←', 'icon-btn')}<span class="eyebrow">${gameName('twit')}</span><span class="count">${t('twit.round', { current: g.roundIndex + 1, total: g.rounds.length })}</span></div>`;
+  if (g.phase === 'question') {
+    const reader = g.players[g.roundIndex % g.players.length];
+    return `${top}<section class="game-screen live-card"><span class="big-symbol" aria-hidden="true">🎯</span><p class="eyebrow">${t('twit.read', { name: escape(reader.name) })}</p><h1 class="twit-question">${escape(question)}</h1><p class="helper">${t('twit.question.helper')}</p>${button('twit-begin', t('twit.begin'))}</section>`;
+  }
+  if (g.phase === 'answering') {
+    const player = g.players[g.turnIndex];
+    const choices = g.players.filter(p => p.id !== player.id).map(p => `<option value="${escape(p.id)}">${escape(p.name)}</option>`).join('');
+    const form = `<form id="twit-form"><h2 class="twit-question">${escape(question)}</h2><label for="twit-estimate">${t('twit.estimate')}</label><input id="twit-estimate" name="estimate" type="text" inputmode="numeric" pattern="[0-9]{1,10}" maxlength="10" required autocomplete="off" aria-describedby="twit-estimate-hint"/><p id="twit-estimate-hint" class="footnote">${t('twit.estimateHint')}</p><label for="twit-prediction">${t('twit.predict')}</label><select id="twit-prediction" name="prediction" required><option value="" disabled selected>${t('twit.select')}</option>${choices}</select><p id="twit-form-error" class="error" role="alert"></p><button class="primary" type="submit">${t('twit.submit')} <span>→</span></button></form>`;
+    return `${top}<section class="game-screen live-card"><p class="eyebrow">${t('sameWave.pass')}</p><h1>${escape(player.name)}</h1><p class="helper">${t('sameWave.noPeeking')}</p>${revealed ? form : `<div class="secret-card">${avatarArt(player.avatar)}</div>${button('reveal', `${t('game.iAm')} ${escape(player.name)} · ${t('twit.reveal')}`)}`}<p class="footnote">${g.turnIndex + 1} ${t('game.of')} ${g.players.length} · ${t('game.appHidesSecret')}</p></section>`;
+  }
+  const result = twitRoundResult(round, g.players);
+  const totals = twitTotals(g);
+  const standings = [...g.players].sort((a, b) => totals[b.id] - totals[a.id]).map(p => `<div class="player ${g.winnerIds.includes(p.id) ? 'selected' : ''}">${avatar(p)}<strong>${escape(p.name)}</strong><span class="count">${t('twit.points', { count: totals[p.id] })}</span></div>`).join('');
+  const answers = g.players.map(p => {
+    const answer = round.answers[p.id];
+    const prediction = g.players.find(other => other.id === answer.predictedId)!;
+    const predictionPoints = result.farthestIds.includes(prediction.id) ? 1 : 0;
+    return `<article class="twit-answer"><div class="twit-answer-head">${avatar(p)}<strong>${escape(p.name)}</strong><span class="count">+${result.points[p.id]}</span></div><strong class="twit-estimate">${number(answer.estimate)}</strong><p class="footnote">${t('twit.distance', { count: number(Math.abs(answer.estimate - round.question.answer)) })}</p><div class="twit-badges">${result.closestIds.includes(p.id) ? `<span>${t('twit.closest')}</span>` : ''}${result.farthestIds.includes(p.id) ? `<span>${t('twit.farthest')}</span>` : ''}</div><p class="helper">${t('twit.prediction', { name: escape(prediction.name), points: predictionPoints })}</p></article>`;
+  }).join('');
+  const winnerNames = g.players.filter(p => g.winnerIds.includes(p.id)).map(p => escape(p.name)).join(', ');
+  const title = g.phase === 'result' ? t(g.winnerIds.length === 1 ? 'twit.winners' : 'twit.tiedWinners', { names: winnerNames }) : t('twit.roundResult');
+  const actions = g.phase === 'result' ? `${button('again', `${t('game.rematch')} <span>↻</span>`)}${button('home', t('game.changeSetup'), 'text-btn')}` : button('twit-next', `${t('twit.next')} <span>→</span>`);
+  return `${top}<section class="game-screen result live-card"><h1>${title}</h1><h2 class="twit-question">${escape(question)}</h2><p class="eyebrow">${t('twit.answer')}</p><strong class="answer twit-correct">${number(round.question.answer)}</strong><p class="helper">${t('twit.resultHelper')}</p><div class="twit-answers">${answers}</div><h2>${t('twit.standings')}</h2><div class="players">${standings}</div>${actions}</section>`;
+}
+
 function activeGameView(game: ActiveGame): string {
   if (game.gameId === 'bomb') return bombGameView(game);
   if (game.gameId === 'same-wave') return sameWaveGameView(game);
   if (game.gameId === 'who-am-i') return whoAmIGameView(game);
+  if (game.gameId === 'twit') return twitGameView(game);
   return impostorGameView(game);
 }
 
@@ -370,7 +405,7 @@ function deleteDialogView(): string {
   return `<h2 id="dialog-title">${t('player.deleteTitle')}</h2><p class="helper">${t('player.deleteHelper', { name: escape(player.name) })}</p>${button('confirm-delete', t('player.confirmDelete'))}${button('close', t('action.cancel'), 'text-btn')}`;
 }
 
-type HelpContext = 'catalog' | 'stats' | 'impostor' | 'bomb' | 'sameWave' | 'whoAmI';
+type HelpContext = 'catalog' | 'stats' | 'impostor' | 'bomb' | 'sameWave' | 'whoAmI' | 'twit';
 const helpCopy: Record<HelpContext, { title: MessageKey; body: MessageKey }> = {
   catalog: { title: 'help.catalog.title', body: 'help.catalog.body' },
   stats: { title: 'help.stats.title', body: 'help.stats.body' },
@@ -378,6 +413,7 @@ const helpCopy: Record<HelpContext, { title: MessageKey; body: MessageKey }> = {
   bomb: { title: 'help.bomb.title', body: 'help.bomb.body' },
   sameWave: { title: 'help.sameWave.title', body: 'help.sameWave.body' },
   whoAmI: { title: 'help.whoAmI.title', body: 'help.whoAmI.body' },
+  twit: { title: 'help.twit.title', body: 'help.twit.body' },
 };
 
 function currentHelpContext(): HelpContext {
@@ -511,6 +547,11 @@ root.addEventListener('input', e => {
 });
 root.addEventListener('change', e => {
   const target = e.target as HTMLInputElement | HTMLSelectElement;
+  if (target.id === 'twit-rounds') {
+    const rounds = Number(target.value);
+    if ((TWIT_ROUND_COUNTS as readonly number[]).includes(rounds)) void change(d => { d.settings.twit.rounds = rounds; });
+    return;
+  }
   if (target.id === 'avatar-upload') {
     const file = (target as HTMLInputElement).files?.[0];
     if (!file) return;
@@ -519,6 +560,32 @@ root.addEventListener('change', e => {
 });
 root.addEventListener('submit', async e => {
   e.preventDefault();
+  if ((e.target as HTMLFormElement).id === 'twit-form') {
+    const game = data.activeGame;
+    if (!game || game.gameId !== 'twit' || game.phase !== 'answering' || !revealed || busy) return;
+    const raw = root.querySelector<HTMLInputElement>('#twit-estimate')!.value.trim();
+    const estimate = Number(raw);
+    const predictedId = root.querySelector<HTMLSelectElement>('#twit-prediction')!.value;
+    const playerId = game.players[game.turnIndex].id;
+    if (!/^\d+$/.test(raw) || !Number.isSafeInteger(estimate) || estimate < 0 || estimate > MAX_TWIT_ESTIMATE
+      || predictedId === playerId || !game.players.some(p => p.id === predictedId)) {
+      root.querySelector('#twit-form-error')!.textContent = t('twit.invalid');
+      return;
+    }
+    // Conceal before waiting for storage; the next holder must never see this draft.
+    revealed = false;
+    render();
+    await change(d => {
+      const active = d.activeGame;
+      if (!active || active.gameId !== 'twit') return;
+      if (submitTwitAnswer(active, playerId, estimate, predictedId) && active.phase === 'result' && !active.scoreRecorded) {
+        d.players = recordActiveGameResult(d.players, active);
+        active.scoreRecorded = true;
+      }
+    });
+    resetScrollToTop();
+    return;
+  }
   const name = draftName.trim().replace(/\s+/g, ' ');
   if (!name || name.length > 24 || data.players.some(p => p.id !== editingPlayerId && p.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
     root.querySelector('#form-error')!.textContent = t('error.uniqueName');
@@ -646,6 +713,8 @@ root.addEventListener('click', async e => {
         d.activeGame = createSameWaveGame(players, SAME_WAVE_PROMPTS[Math.floor(Math.random() * SAME_WAVE_PROMPTS.length)]);
       } else if (d.selectedGameId === 'who-am-i') {
         d.activeGame = createWhoAmIGame(players, WHO_AM_I_IDENTITIES);
+      } else if (d.selectedGameId === 'twit') {
+        d.activeGame = createTwitGame(players, d.settings.twit.rounds);
       } else d.activeGame = createGame(players, d.settings.impostor);
     }); resetScrollToTop(); break;
     case 'again': categoryScreen = false; revealed = false; whoAmIRevealed = false; if (data.activeGame?.gameId === 'impostor') concealResult(root); clearBombExplosionFeedback(); bombExpiryAttemptedGameId = null; if (data.activeGame?.gameId === 'bomb') primeBombAudio(); await change(d => {
@@ -657,6 +726,7 @@ root.addEventListener('click', async e => {
         d.activeGame = rematchBomb(game, prompts);
       } else if (game.gameId === 'same-wave') d.activeGame = rematchSameWave(game, SAME_WAVE_PROMPTS);
       else if (game.gameId === 'who-am-i') d.activeGame = rematchWhoAmI(game, WHO_AM_I_IDENTITIES);
+      else if (game.gameId === 'twit') d.activeGame = rematchTwit(game);
       else d.activeGame = createGame(game.players, d.settings.impostor, game.entry.word, game.starterId);
     }); resetScrollToTop(); break;
     case 'bomb-loser': clearBombExplosionFeedback(); await change(d => {
@@ -666,6 +736,8 @@ root.addEventListener('click', async e => {
       if (!game.scoreRecorded) { d.players = recordActiveGameResult(d.players, game); game.scoreRecorded = true; }
     }); navigator.vibrate?.([30, 40, 30]); break;
     case 'reveal': revealCard(); break;
+    case 'twit-begin': revealed = false; await change(d => { if (d.activeGame?.gameId === 'twit') startTwitRound(d.activeGame); }); resetScrollToTop(); break;
+    case 'twit-next': revealed = false; await change(d => { if (d.activeGame?.gameId === 'twit') nextTwitRound(d.activeGame); }); resetScrollToTop(); break;
     case 'next': revealed = false; await change(d => { const g = d.activeGame; if (!g || g.gameId !== 'impostor') return; if (g.revealIndex + 1 < g.players.length) g.revealIndex++; else g.phase = 'discuss'; }); resetScrollToTop(); break;
     case 'who-reveal': whoAmIRevealed = true; render(); break;
     case 'who-playing': whoAmIRevealed = false; await change(d => {
@@ -752,7 +824,7 @@ if (modelContext) {
 
 function revealCard() {
   const game = data.activeGame;
-  if (!game || revealed || !((game.gameId === 'impostor' && game.phase === 'reveal') || (game.gameId === 'same-wave' && game.phase === 'picking'))) return;
+  if (!game || revealed || !((game.gameId === 'impostor' && game.phase === 'reveal') || (game.gameId === 'same-wave' && game.phase === 'picking') || (game.gameId === 'twit' && game.phase === 'answering'))) return;
   revealed = true;
   navigator.vibrate?.(18);
   render();

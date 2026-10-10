@@ -12,10 +12,10 @@ describe("localization", () => {
   });
 
   it("provides complete contextual help copy in both locales", () => {
-    for (const key of ["help.catalog.title", "help.stats.title", "help.impostor.title", "help.bomb.title", "help.sameWave.title"] as const) {
+    for (const key of ["help.catalog.title", "help.stats.title", "help.impostor.title", "help.bomb.title", "help.sameWave.title", "help.twit.title"] as const) {
       expect(translate("it", key)).not.toBe(translate("en", key));
     }
-    for (const key of ["help.catalog.body", "help.stats.body", "help.impostor.body", "help.bomb.body", "help.sameWave.body"] as const) {
+    for (const key of ["help.catalog.body", "help.stats.body", "help.impostor.body", "help.bomb.body", "help.sameWave.body", "help.twit.body"] as const) {
       expect(translate("it", key)).not.toBe("");
       expect(translate("en", key)).not.toBe("");
     }

@@ -42,6 +42,7 @@ classDiagram
     +GameStats bomb
     +GameStats sameWave
     +GameStats whoAmI
+    +GameStats twit
   }
   class GameStats {
     +number gamesPlayed
@@ -59,20 +60,22 @@ classDiagram
   class BombGame
   class SameWaveGame
   class WhoAmIGame
+  class TwitGame
 
-  GameCatalog "1" o-- "4" GameDefinition : offers
+  GameCatalog "1" o-- "5" GameDefinition : offers
   AppData "1" o-- "0..*" Player : reusable profiles
   Player "1" *-- "1" PlayerStats : owns
-  PlayerStats "1" *-- "4" GameStats : per game
+  PlayerStats "1" *-- "5" GameStats : per game
   AppData "1" o-- "0..1" ActiveGame : resumes
   ActiveGame <|-- ImpostorGame
   ActiveGame <|-- BombGame
   ActiveGame <|-- SameWaveGame
   ActiveGame <|-- WhoAmIGame
+  ActiveGame <|-- TwitGame
   ActiveGame "1" o-- "2..20" Player : participants
 ```
 
-Profiles belong to `AppData`, not to any game. Every session snapshots participating profiles for stable names and avatars, while result recording updates canonical profiles by ID. Overall totals and win percentage are derived by summing four `GameStats` records; no duplicate aggregate counter is persisted.
+Profiles belong to `AppData`, not to any game. Every session snapshots participating profiles for stable names and avatars, while result recording updates canonical profiles by ID. Overall totals and win percentage are derived by summing five `GameStats` records; no duplicate aggregate counter is persisted.
 
 ## Catalog games
 
@@ -96,13 +99,17 @@ Content is data-driven through stable bilingual `SameWavePrompt` records. A rema
 
 Three to twenty players receive unique bilingual identities drawn from people, fictional characters, and objects. During private pass-the-phone reveal, each participant sees every identity except their own. Players then rotate through yes/no questions. Current player may buzz once, say answer aloud, and let group mark it correct or wrong after app reveals identity. Correct guess wins immediately; wrong guess eliminates player; all wrong produces no winner. Rematch keeps participants and excludes prior identities when deck has enough alternatives.
 
+### Twit
+
+Three to twenty players estimate an exact numerical answer, then privately predict which other player will be farthest off. The closest estimate earns two points and each correct prediction earns one. Ties count for both awards. Matches offer 1, 3, 5 (default), or 10 rounds; highest total wins, including tied leaders. Statistics record once only after the final round. Sixty bilingual questions ship offline, with unique questions within each match and fresh questions on rematch when the deck permits.
+
 ## Statistics screen
 
 `#stats` is a separate application screen, reachable from catalog and game setup when no session is active. It shows:
 
 - catalog-wide games played, wins, losses, and win rate;
 - one card per saved player with overall totals;
-- per-game played/won/lost values for Impostore, Bomba, Stessa Onda, and Chi sono?;
+- per-game played/won/lost values for Impostore, Bomba, Stessa Onda, Chi sono?, and Twit;
 - Impostore role split for migrated and newly recorded results;
 - empty states for new profiles and an entirely empty roster.
 
@@ -148,6 +155,7 @@ Every help variant is complete in Italian and English, has a context-specific ti
 - Bomba: coral identifier, limited to bomb graphic and urgent state.
 - Stessa Onda: cyan-violet identifier.
 - Chi sono?: amber-violet identifier.
+- Twit: violet-cyan target and numerical artwork.
 
 These identifiers may decorate an eyebrow, icon, or card edge. Lime remains global action/focus color. This section is normative: future UI changes extend these rules instead of adding another visual theme.
 

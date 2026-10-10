@@ -2,6 +2,7 @@ import type { Locale } from './i18n';
 import { isCategoryId, isCategorySelection, type CategorySelection } from './words';
 import type { GameId } from './catalog';
 import { BOMB_CATEGORY_IDS } from './bomb-content';
+import { isTwitGameSnapshot, TWIT_ROUND_COUNTS } from './twit';
 export type { GameId } from './catalog';
 
 export interface GameStats {
@@ -22,6 +23,7 @@ export interface PlayerStats {
   bomb: GameStats;
   sameWave: GameStats;
   whoAmI: GameStats;
+  twit: GameStats;
 }
 
 export interface Player {
@@ -55,6 +57,7 @@ export interface SettingsByGame {
   bomb: BombSettings;
   sameWave: SameWaveSettings;
   whoAmI: WhoAmISettings;
+  twit: { rounds: number };
 }
 
 export interface AppData<T = unknown> {
@@ -101,7 +104,7 @@ function isRecord(value: unknown): value is Record<string, unknown> { return typ
 
 export function emptyGameStats(): GameStats { return { gamesPlayed: 0, wins: 0, losses: 0 }; }
 export function emptyPlayerStats(): PlayerStats {
-  return { impostor: { ...emptyGameStats(), citizenWins: 0, citizenLosses: 0, impostorWins: 0, impostorLosses: 0 }, bomb: emptyGameStats(), sameWave: emptyGameStats(), whoAmI: emptyGameStats() };
+  return { impostor: { ...emptyGameStats(), citizenWins: 0, citizenLosses: 0, impostorWins: 0, impostorLosses: 0 }, bomb: emptyGameStats(), sameWave: emptyGameStats(), whoAmI: emptyGameStats(), twit: emptyGameStats() };
 }
 function isCounter(value: unknown): value is number { return Number.isSafeInteger(value) && (value as number) >= 0; }
 function isNonEmptyString(value: unknown): value is string { return typeof value === 'string' && value.trim().length > 0; }
@@ -118,7 +121,7 @@ function isImpostorStats(value: unknown): value is ImpostorStats {
     && value.citizenWins + value.impostorWins === value.wins
     && value.citizenLosses + value.impostorLosses === value.losses;
 }
-function isPlayerStats(value: unknown): value is PlayerStats { return isRecord(value) && isImpostorStats(value.impostor) && isGameStats(value.bomb) && isGameStats(value.sameWave) && (value.whoAmI === undefined || isGameStats(value.whoAmI)); }
+function isPlayerStats(value: unknown): value is PlayerStats { return isRecord(value) && isImpostorStats(value.impostor) && isGameStats(value.bomb) && isGameStats(value.sameWave) && (value.whoAmI === undefined || isGameStats(value.whoAmI)) && (value.twit === undefined || isGameStats(value.twit)); }
 
 function isLegacyStats(value: unknown): value is Record<string, unknown> {
   if (!isRecord(value)) return false;
@@ -142,7 +145,7 @@ function legacyStats(value: unknown): PlayerStats {
 }
 function normalizeStats(value: unknown): PlayerStats {
   if (value === undefined) return emptyPlayerStats();
-  if (isPlayerStats(value)) return { ...structuredClone(value), whoAmI: isGameStats(value.whoAmI) ? structuredClone(value.whoAmI) : emptyGameStats() };
+  if (isPlayerStats(value)) return { ...structuredClone(value), whoAmI: isGameStats(value.whoAmI) ? structuredClone(value.whoAmI) : emptyGameStats(), twit: isGameStats(value.twit) ? structuredClone(value.twit) : emptyGameStats() };
   if (isLegacyStats(value)) return legacyStats(value);
   throw new Error('Invalid player statistics');
 }
@@ -255,6 +258,7 @@ function isActiveGame(value: unknown): boolean {
   if (value.gameId === 'bomb') return isBombGameSnapshot(value);
   if (value.gameId === 'same-wave') return isSameWaveGameSnapshot(value);
   if (value.gameId === 'who-am-i') return isWhoAmIGameSnapshot(value);
+  if (value.gameId === 'twit') return isPlayerList(value.players, 3, 20) && isTwitGameSnapshot(value);
   return false;
 }
 function isBombCategory(value: unknown): value is string {
@@ -268,7 +272,8 @@ function isSettingsByGame(value: unknown, selectedCount: number): value is Setti
   return Number.isInteger(impostors) && (impostors as number) >= 1 && (impostors as number) <= maxAllowedImpostors
     && (settings.maxAttempts === undefined || (isCounter(settings.maxAttempts) && settings.maxAttempts >= Math.max(1, impostors as number) && settings.maxAttempts <= Math.max(1, selectedCount)))
     && isCategorySelection(settings.category) && isBombCategory(value.bomb.category) && value.sameWave.category === 'all'
-    && (value.whoAmI === undefined || (isRecord(value.whoAmI) && value.whoAmI.category === 'all'));
+    && (value.whoAmI === undefined || (isRecord(value.whoAmI) && value.whoAmI.category === 'all'))
+    && (value.twit === undefined || (isRecord(value.twit) && (TWIT_ROUND_COUNTS as readonly unknown[]).includes(value.twit.rounds)));
 }
 function isSnapshot<T>(value: unknown): value is AppData<T> {
   if (!isRecord(value) || !Array.isArray(value.players) || !value.players.every(isPlayer) || !Array.isArray(value.selectedIds) || !value.selectedIds.every((id) => typeof id === 'string')) return false;
@@ -277,7 +282,7 @@ function isSnapshot<T>(value: unknown): value is AppData<T> {
     || new Set(value.selectedIds).size !== value.selectedIds.length || !value.selectedIds.every((id) => playerIds.has(id))) return false;
   if (value.language !== 'it' && value.language !== 'en') return false;
   if (!isActiveGame(value.activeGame)) return false;
-  if (value.selectedGameId !== undefined && value.selectedGameId !== 'impostor' && value.selectedGameId !== 'bomb' && value.selectedGameId !== 'same-wave' && value.selectedGameId !== 'who-am-i') return false;
+  if (value.selectedGameId !== undefined && value.selectedGameId !== 'impostor' && value.selectedGameId !== 'bomb' && value.selectedGameId !== 'same-wave' && value.selectedGameId !== 'who-am-i' && value.selectedGameId !== 'twit') return false;
   if (isSettingsByGame(value.settings, value.selectedIds.length)) return true;
   const settings = value.settings;
   if (isRecord(settings) && ('impostor' in settings || 'bomb' in settings || 'sameWave' in settings)) return false;
@@ -302,9 +307,14 @@ function normalizeSnapshot<T>(stored: unknown): AppData<T> {
     bomb: legacySettings ? { category: 'all' } : structuredClone((source.settings as SettingsByGame).bomb),
     sameWave: legacySettings ? { category: 'all' } : structuredClone((source.settings as SettingsByGame).sameWave),
     whoAmI: legacySettings || !(source.settings as Partial<SettingsByGame>).whoAmI ? { category: 'all' } : structuredClone((source.settings as SettingsByGame).whoAmI),
+    twit: legacySettings || !(source.settings as Partial<SettingsByGame>).twit ? { rounds: 5 } : structuredClone((source.settings as SettingsByGame).twit),
   };
   const players = (source.players as Record<string, unknown>[]).map((player) => ({ ...player, stats: normalizeStats(player.stats) })) as Player[];
-  return { players, selectedIds: [...(source.selectedIds as string[])], selectedGameId: (source.selectedGameId as GameId | undefined) ?? 'impostor', settings, language: source.language as Locale, activeGame: normalizeActiveGame(source.activeGame as T | null) };
+  let activeGame = normalizeActiveGame(source.activeGame as T | null);
+  if (isRecord(activeGame) && Array.isArray(activeGame.players)) {
+    activeGame = { ...activeGame, players: activeGame.players.map((player: Record<string, unknown>) => ({ ...player, stats: normalizeStats(player.stats) })) };
+  }
+  return { players, selectedIds: [...(source.selectedIds as string[])], selectedGameId: (source.selectedGameId as GameId | undefined) ?? 'impostor', settings, language: source.language as Locale, activeGame };
 }
 function deleteSnapshot(): Promise<void> {
   return openDatabase().then((database) => new Promise<void>((resolve, reject) => {

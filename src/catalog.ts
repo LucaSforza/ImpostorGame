@@ -1,4 +1,4 @@
-export type GameId = 'impostor' | 'bomb' | 'same-wave' | 'who-am-i';
+export type GameId = 'impostor' | 'bomb' | 'same-wave' | 'who-am-i' | 'twit';
 
 export interface GameDefinition {
   readonly id: GameId;
@@ -13,6 +13,7 @@ const definitions: readonly GameDefinition[] = Object.freeze([
   Object.freeze({ id: 'bomb', nameKey: 'catalog.bomb.name', descriptionKey: 'catalog.bomb.description', minPlayers: 2, maxPlayers: 20 }),
   Object.freeze({ id: 'same-wave', nameKey: 'catalog.sameWave.name', descriptionKey: 'catalog.sameWave.description', minPlayers: 3, maxPlayers: 20 }),
   Object.freeze({ id: 'who-am-i', nameKey: 'catalog.whoAmI.name', descriptionKey: 'catalog.whoAmI.description', minPlayers: 3, maxPlayers: 20 }),
+  Object.freeze({ id: 'twit', nameKey: 'catalog.twit.name', descriptionKey: 'catalog.twit.description', minPlayers: 3, maxPlayers: 20 }),
 ]);
 
 /** Single registry for games exposed to the user. */
@@ -20,9 +21,9 @@ export class GameCatalog {
   readonly games: readonly GameDefinition[];
 
   constructor(games: readonly GameDefinition[] = definitions) {
-    const supportedIds = new Set<GameId>(['impostor', 'bomb', 'same-wave', 'who-am-i']);
+    const supportedIds = new Set<GameId>(['impostor', 'bomb', 'same-wave', 'who-am-i', 'twit']);
     if (games.length !== supportedIds.size || new Set(games.map((game) => game.id)).size !== supportedIds.size || games.some((game) => !supportedIds.has(game.id))) {
-      throw new Error('GameCatalog must contain exactly four games');
+      throw new Error('GameCatalog must contain exactly five games');
     }
     this.games = Object.freeze(games.map((game) => Object.freeze({ ...game })));
   }

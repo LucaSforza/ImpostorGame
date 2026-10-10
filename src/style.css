@@ -104,6 +104,17 @@ footer > span:first-child { color: var(--violet); }
 .catalog-players { color: var(--violet); font-size: 12px; font-weight: 700; line-height: 1.45; }
 .catalog-play { min-height: 44px; padding: var(--space-2) var(--space-3); border: 1px solid var(--lime); border-radius: var(--radius-sm); background: var(--lime); color: var(--lime-ink); font-weight: 800; }
 .catalog-play:hover { filter: brightness(1.08); }
+.live-card .twit-question { font-size: clamp(24px, 5vw, 36px); line-height: 1.2; letter-spacing: -.025em; }
+.twit-correct { display: block; margin: var(--space-4) 0; font-size: clamp(36px, 9vw, 58px); }
+#twit-form { text-align: left; }
+.twit-answers { display: grid; gap: var(--space-3); margin: var(--space-5) 0 var(--space-6); text-align: left; }
+.twit-answer { min-width: 0; padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-raised); }
+.twit-answer-head { display: flex; align-items: center; gap: var(--space-3); }
+.twit-answer-head > strong { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.twit-estimate { display: block; margin-top: var(--space-3); color: var(--text); font-size: 30px; overflow-wrap: anywhere; }
+.twit-answer p { margin: var(--space-2) 0 0; }
+.twit-badges { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+.twit-badges > span { padding: var(--space-1) var(--space-2); border: 1px solid var(--border-strong); border-radius: 999px; color: var(--lime); font-size: 12px; font-weight: 700; }
 .cover { display: grid; grid-template-columns: minmax(150px, 38%) 1fr; min-height: 250px; margin-bottom: var(--space-7); overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: 0 6px 0 var(--shadow); }
 .cover-art { grid-column: 2; grid-row: 1 / span 2; min-height: 250px; background: url('./assets/cover.png') center / cover; }
 .cover-copy { grid-column: 1; grid-row: 1 / span 2; max-width: none; padding: var(--space-6); background: var(--surface); }
@@ -265,6 +276,8 @@ dialog::backdrop { background: var(--bg); opacity: .88; }
 .dialog-inner h2 { padding-right: 44px; }
 .dialog-inner label, .field-label { display: block; margin: var(--space-5) 0 var(--space-2); color: var(--text-secondary); font-size: 14px; }
 .dialog-inner input, .setting select { width: 100%; padding: var(--space-3); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-size: 16px; }
+#twit-form input, #twit-form select, #twit-rounds { width: 100%; min-height: 48px; padding: var(--space-3); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface-raised); color: var(--text); font-size: 16px; }
+#twit-form label, label[for="twit-rounds"] { display: block; margin: var(--space-4) 0 var(--space-2); color: var(--text-secondary); font-size: 14px; font-weight: 700; }
 .avatar-upload { display: flex; align-items: center; gap: var(--space-3); margin: var(--space-3) 0 var(--space-1); }
 .avatar-preview { width: 58px; height: 58px; flex-basis: 58px; border-radius: var(--radius-md); }
 .upload-label { display: inline-flex !important; min-height: 44px; align-items: center; justify-content: center; margin: 0 !important; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-raised); color: var(--text-secondary) !important; font-weight: 800; }

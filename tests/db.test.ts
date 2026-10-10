@@ -11,6 +11,7 @@ const settings = (category = "all"): SettingsByGame => ({
   bomb: { category: "all" },
   sameWave: { category: "all" },
   whoAmI: { category: "all" },
+  twit: { rounds: 5 },
 });
 
 afterEach(async () => {

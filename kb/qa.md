@@ -1,5 +1,13 @@
 # Validation
 
+## Twit release — 2026-10-11
+
+- Baseline: 14 files, 110 tests passed. Before production edits, three assertions failed because catalog lacked Twit and old snapshots lacked Twit defaults. New rules tests were written before the module; initial suite could not import the not-yet-created feature. Final gates: `npm test` (16 files, 124 tests), `npm run build`, and `git diff --check` passed.
+- Coverage: 3–20 bounds; 1/3/5/10 rounds; unique bilingual deck; private turn validation; whole-number estimates; other-player predictions; closest/farthest ties; equal answers; cumulative totals; complete-match-only and exactly-once statistics; rematch isolation; every saved phase; earlier wording; malformed progress/winners; failed-write preservation; prototype-like profile IDs; all four earlier active sessions, photos, and counters migrate intact.
+- Local browser QA used an isolated origin at 390 × 844 and 320 × 740. Three QA profiles completed three rounds: first awarded 3/3/0, then two all-correct tied rounds awarded 3/3/3 each; final 9/9/6 declared two winners. Mid-round and result reload preserved progress/awards; language change and reload concealed the private form. Confirming an answer showed the next holder only. Forms stayed within viewport, input/select height was 48 px, submit height 62 px at 320 px, and document width never exceeded viewport.
+- Italian/English help and question projection passed. Rematch kept three rounds and profiles, with a new starter/question; abandoning it added no scores. Statistics and a further reload showed exactly one Twit match per participant (two wins, one loss), all other counters zero. Console had no warnings/errors.
+- Not checked in this run: physical iPhone/Safari keyboard, blur/pagehide/visibility concealment, reduced motion, full keyboard navigation, network inspection, or all earlier games' browser flows. Their existing automated tests remain green. Public deployment is checked after push separately.
+
 ## Bomba timer range — 2026-09-27
 
 - New rounds choose a random duration from 45 through 120 seconds, inclusive. Persistence still accepts old 20–44 second active sessions and new 45–120 second sessions.
@@ -35,7 +43,7 @@
 
 Automated gates:
 
-- catalog resolves exactly four stable game IDs and rejects unknown IDs;
+- catalog resolves exactly five stable game IDs and rejects unknown IDs;
 - legacy IndexedDB snapshot migrates without losing players, photos, selections, Impostore settings, active game, or counters;
 - invalid new snapshots are rejected; failed writes preserve previous snapshot;
 - shared player selection is visible to every game setup;
@@ -47,13 +55,14 @@ Automated gates:
 - a fresh Bomba expiry produces one local explosion sound and brief animation plus an accessible BOOM message; reload does not replay it, reduced motion suppresses animation, and unavailable audio does not prevent adjudication;
 - Stessa Onda keeps choices private until completion, resolves single/tied/no-match winner groups, and records once;
 - Chi sono? hides own identity, reveals only other identities privately, rotates active players, permits one adjudicated guess each, resolves winner/all-wrong results, changes identities on rematch, and records once;
+- Twit keeps estimates/predictions private, awards closest +2 and correct farthest predictions +1 including ties, sums all chosen rounds, resumes every phase, rematches without repeated questions when possible, and records completed matches once;
 - aggregate statistics equal sum of per-game records and reject inconsistent edits;
 - Italian and English catalogs cover every message and game-content projection;
 - `npm test` and `npm run build` pass from clean checkout.
 
 Browser QA at 390 × 844 and 320 × 740:
 
-- catalog shows four usable game cards, Pocket Circle brand, privacy promise, no horizontal overflow;
+- catalog shows five usable game cards, Pocket Circle brand, privacy promise, no horizontal overflow;
 - every route follows the normative Night Arcade tokens: deep-plum shell, warm-white readable copy, lime primary action/focus, common cards and controls; game identity never replaces the full-page palette;
 - mobile copy remains at least 14 px for body text and 12 px for metadata, tap targets remain at least 44 × 44 px, and no essential copy is low-contrast or laid over busy artwork;
 - header remains usable without clipping at 320 px: readable brand, icon navigation with accessible names, and no horizontal page scrollbar;

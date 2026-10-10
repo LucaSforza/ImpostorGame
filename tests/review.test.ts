@@ -10,7 +10,7 @@ import { recordActiveGameResult } from '../src/stats';
 const players = (): Player[] => [1, 2, 3].map(id => ({ id: `p${id}`, name: `Player ${id}`, avatar: 'avatar-01', createdAt: id, stats: emptyPlayerStats() }));
 const snapshot = (activeGame: ActiveGame | null = null): AppData<ActiveGame> => ({
   players: players(), selectedIds: ['p1', 'p2', 'p3'], selectedGameId: activeGame?.gameId ?? 'impostor',
-  settings: { impostor: { impostors: 1, maxAttempts: 1, category: 'all' }, bomb: { category: 'all' }, sameWave: { category: 'all' }, whoAmI: { category: 'all' } },
+  settings: { impostor: { impostors: 1, maxAttempts: 1, category: 'all' }, bomb: { category: 'all' }, sameWave: { category: 'all' }, whoAmI: { category: 'all' }, twit: { rounds: 5 } },
   language: 'it', activeGame,
 });
 const sessions = () => [

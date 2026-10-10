@@ -36,6 +36,7 @@ classDiagram
     +GameStats bomb
     +GameStats sameWave
     +GameStats whoAmI
+    +GameStats twit
     +ImpostorRoleStats impostorRoles
   }
   class GameStats {
@@ -85,6 +86,21 @@ classDiagram
     +string[] eliminatedIds
     +string[] winnerIds
   }
+  class TwitGame {
+    +TwitRound[] rounds
+    +number roundIndex
+    +number turnIndex
+    +string phase
+    +string[] winnerIds
+  }
+  class TwitRound {
+    +TwitQuestion question
+    +Record answers
+  }
+  class TwitAnswer {
+    +number estimate
+    +string predictedId
+  }
   class WordEntry {
     +string word
     +string hint
@@ -94,12 +110,15 @@ classDiagram
   }
   AppData "1" o-- "0..*" Player : reusable profiles
   Player "1" *-- "1" PlayerStats : stats
-  PlayerStats "1" *-- "4" GameStats : per game
+  PlayerStats "1" *-- "5" GameStats : per game
   AppData "1" o-- "0..1" ActiveGame : activeGame
   ActiveGame <|-- ImpostorGame
   ActiveGame <|-- BombGame
   ActiveGame <|-- SameWaveGame
   ActiveGame <|-- WhoAmIGame
+  ActiveGame <|-- TwitGame
+  TwitGame "1" *-- "1..10" TwitRound
+  TwitRound "1" *-- "3..20" TwitAnswer : private answers
   ActiveGame "1" o-- "2..20" Player : participants
   ImpostorGame "1" *-- "1" WordEntry : entry
 ```
@@ -113,3 +132,5 @@ Saved game content is validated structurally and remains independent of later ed
 ## Data scope
 
 The data is local-only: it stays in the page origin's IndexedDB and is not synchronized with a server or remote database. Clearing site data deletes saved players, settings, and the active game. Availability depends on the browser's IndexedDB support and permissions.
+
+Snapshots predating Twit gain zero `stats.twit` counters and `settings.twit.rounds: 5`. Both canonical and session profiles normalize counters; existing profiles, totals, photo avatars, and all four prior game sessions survive. The physical database stays unchanged. Twit validation checks unique bilingual question IDs, integer answer bounds, exact answered-player prefixes, empty future rounds, valid other-player predictions, phase/round progress, final computed winners, and result-only score recording. Catalog wording is never used to validate saved questions.

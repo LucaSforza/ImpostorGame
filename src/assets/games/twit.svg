@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="352" viewBox="0 0 640 352">
+  <rect width="640" height="352" fill="#2a2135"/>
+  <circle cx="320" cy="176" r="139" fill="#463952"/>
+  <circle cx="320" cy="176" r="107" fill="#b9a7e8"/>
+  <circle cx="320" cy="176" r="73" fill="#211a2b"/>
+  <circle cx="320" cy="176" r="35" fill="#d4f777"/>
+  <path d="m299 177 14 14 29-31" fill="none" stroke="#202713" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <g transform="translate(76 73) rotate(-13 70 108)">
+    <rect width="140" height="216" rx="24" fill="#17121f" stroke="#665375" stroke-width="5"/>
+    <rect x="12" y="31" width="116" height="153" rx="10" fill="#b9a7e8"/>
+    <path d="M56 17h28" stroke="#665375" stroke-width="6" stroke-linecap="round"/>
+    <text x="70" y="124" text-anchor="middle" font-family="Arial,sans-serif" font-size="48" font-weight="bold" fill="#211a2b">206</text>
+    <circle cx="70" cy="200" r="6" fill="#665375"/>
+  </g>
+  <g transform="translate(425 79) rotate(14 70 108)">
+    <rect width="140" height="216" rx="24" fill="#17121f" stroke="#665375" stroke-width="5"/>
+    <rect x="12" y="31" width="116" height="153" rx="10" fill="#7cd8e8"/>
+    <path d="M56 17h28" stroke="#665375" stroke-width="6" stroke-linecap="round"/>
+    <text x="70" y="124" text-anchor="middle" font-family="Arial,sans-serif" font-size="52" font-weight="bold" fill="#211a2b">12?</text>
+    <circle cx="70" cy="200" r="6" fill="#665375"/>
+  </g>
+  <g fill="#d4f777"><path d="m42 49 7 16 17 6-17 6-7 17-6-17-17-6 17-6z"/><path d="m575 247 6 14 15 5-15 5-6 15-5-15-15-5 15-5z"/></g>
+  <g fill="#f8f5fb" font-family="Arial,sans-serif" font-size="25" font-weight="bold"><text x="272" y="55">+2</text><text x="336" y="315">+1</text></g>
+</svg>

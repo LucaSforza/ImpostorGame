@@ -13,22 +13,25 @@ The multi-game target keeps one shell and one persisted snapshot. `GameCatalog` 
 - `src/bomb.ts` owns Bomb prompts, deadline creation, expiry, group adjudication, and result projection.
 - `src/same-wave.ts` owns Stessa Onda prompts, private selections, grouping, and winner resolution.
 - `src/who-am-i.ts` owns unique identity dealing, private other-identity views, turn rotation, buzz adjudication, elimination, and winner resolution; `src/who-am-i-content.ts` owns 60 stable bilingual identities.
+- `src/twit.ts` owns Twit question selection, private estimates/predictions, exact distance awards, match totals, tied winners, rematches, and saved-phase validation; `src/twit-content.ts` owns 60 stable bilingual numerical questions.
 - `src/stats.ts` owns zeroed statistics, legacy conversion, aggregate derivation, invariant checks, and exactly-once result updates.
 - `src/db.ts` defines `AppData`, wraps snapshot reads and writes in IndexedDB, migrates valid legacy snapshots at the boundary, and deletes snapshots that fail supported contracts.
 - `src/i18n.ts` owns the typed locale catalog, interpolation, and localized category labels. UI code passes message keys to `translate()`; it does not carry Italian/English pairs.
 - `src/words.ts` contains stable category IDs, the standard bilingual `WordEntry` corpus, and category-aware deck selection; `src/spicy-18.ts` owns the opt-in bilingual adult pairs.
 - `src/style.css` contains the single Night Arcade design system used by catalog, setup, all games, dialogs, results, and statistics. Shared CSS custom properties are the only source of color, type, spacing, border, and focus values; game identity is limited to small accents described in [catalog design](catalog-design.md#visual-system-night-arcade).
 
-Header help is resolved from current route plus selected or active game. Catalog, statistics, Impostore, Bomba, Stessa Onda, and Chi sono? each provide localized guidance without changing persisted state.
+Header help is resolved from current route plus selected or active game. Catalog, statistics, Impostore, Bomba, Stessa Onda, Chi sono?, and Twit each provide localized guidance without changing persisted state.
 
 ## State and language
 
 `AppData` stores shared players, selections, selected catalog game, per-game settings, interface language, and optional `ActiveGame`. `data.language` remains the single locale source. Sessions store language-neutral IDs and bilingual content; switching language re-renders current game consistently.
 
-Each session stores its own participant order. Impostore shuffles its order when created or rematched; rematches exclude the previous starter and previous crew word. Other games rotate around a randomly chosen starter. The shared roster stays unchanged. `players[0]` starts Bomba, Stessa Onda, and Chi sono?; Impostore uses the same first participant as `starterId`. Never rerandomize this order when rendering or restoring a session.
+Each session stores its own participant order. Impostore shuffles its order when created or rematched; rematches exclude the previous starter and previous crew word. Other games rotate around a randomly chosen starter. The shared roster stays unchanged. `players[0]` starts Bomba, Stessa Onda, Chi sono?, and Twit; Impostore uses the same first participant as `starterId`. Never rerandomize this order when rendering or restoring a session.
 
 The reveal card is controlled by the module variable `revealed`, which is not part of `AppData` and is never saved. `visibilitychange`, `pagehide`, and `blur` reset it to `false`, so rendering hides the card when the app loses visibility. During the unrevealed state, the card shows character artwork and can be opened with the accessible Reveal button or by swiping upward more than 55 pixels. The local snapshot still contains the active game, including the word entry, role IDs, vote history, and score-recording flag needed to resume after a reload.
 
 ## Persistence and startup
 
 At startup, `loadData()` reads the snapshot. If one exists, the app restores players, settings, and the active game; otherwise it saves the initial state. An IndexedDB error leaves the app unavailable and shows a message asking the user to enable site data. All persistence is local to the browser and the app's origin; there is no server-side database.
+
+Twit stores the entire match deck and answers per round. `question` opens public read-aloud, `answering` advances private turns, `round-result` reveals one completed round, and `result` records the completed match. Round points and totals are derived from answers rather than persisted twice. Its reveal flag reuses transient `revealed`; no unfinished draft is saved.

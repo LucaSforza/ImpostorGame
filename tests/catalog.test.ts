@@ -3,8 +3,8 @@ import { GameCatalog, gameCatalog } from '../src/catalog';
 import { screenFromHash } from '../src/router';
 
 describe('GameCatalog', () => {
-  it('offers exactly the four stable games', () => {
-    expect(gameCatalog.list().map((game) => game.id)).toEqual(['impostor', 'bomb', 'same-wave', 'who-am-i']);
+  it('offers exactly the five stable games', () => {
+    expect(gameCatalog.list().map((game) => game.id)).toEqual(['impostor', 'bomb', 'same-wave', 'who-am-i', 'twit']);
     expect(gameCatalog.get('bomb').minPlayers).toBe(2);
     expect(gameCatalog.get('who-am-i')).toMatchObject({ minPlayers: 3, maxPlayers: 20 });
     expect(new GameCatalog().list()).not.toBe(gameCatalog.list());
@@ -16,7 +16,7 @@ describe('GameCatalog', () => {
       { id: 'bomb', nameKey: 'b', descriptionKey: 'b', minPlayers: 2, maxPlayers: 20 },
       { id: 'same-wave', nameKey: 'c', descriptionKey: 'c', minPlayers: 3, maxPlayers: 20 },
       { id: 'other' as 'who-am-i', nameKey: 'd', descriptionKey: 'd', minPlayers: 3, maxPlayers: 20 },
-    ])).toThrow('exactly four games');
+    ])).toThrow('exactly five games');
   });
 
   it.each([

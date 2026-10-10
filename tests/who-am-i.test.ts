@@ -25,7 +25,7 @@ const players = (count: number): Player[] => Array.from({ length: count }, (_, i
     impostor: { gamesPlayed: 0, wins: 0, losses: 0, citizenWins: 0, citizenLosses: 0, impostorWins: 0, impostorLosses: 0 },
     bomb: { gamesPlayed: 0, wins: 0, losses: 0 },
     sameWave: { gamesPlayed: 0, wins: 0, losses: 0 },
-    whoAmI: { gamesPlayed: 0, wins: 0, losses: 0 },
+    whoAmI: { gamesPlayed: 0, wins: 0, losses: 0 }, twit: { gamesPlayed: 0, wins: 0, losses: 0 },
   },
 }));
 

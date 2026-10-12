@@ -5,6 +5,7 @@ Reviewed catalog and all five supported engines (four currently playable plus re
 | Priority | Finding | Resolution / evidence |
 | --- | --- | --- |
 | P0 | Startup rewrites supported older Impostore attempt limits, contradicting storage compatibility | Removed setup-limit clamp for validated active sessions. Browser test first observed `3 → 2`; now asserts 3 retained. Schema/name/store/key unchanged. |
+| P0 | Exiting a supported retired Stessa Onda session tries to render removed catalog setup | Browser reproduced `Unknown game: same-wave`; Home now selects Impostore while preserving all profiles and historical scores. |
 | P0 | README lists three games including retired Stessa Onda; localized catalog claims five | README and English/Italian catalog now list actual four games; preserve retired sessions/stats. |
 | P0 | Hide-and-pass leaves current secret in DOM while slow IndexedDB save completes | Conceal transient reveal synchronously before save. Delayed-completion browser test first saw secret remain, then passed. Same policy applies to identity and language transitions. |
 | P0 | No reliable offline reopening despite network-free gameplay | Full-build precache, manifest, local icons, safe lifecycle and optional readiness/install guidance. Test actual offline gameplay, not just metadata. |

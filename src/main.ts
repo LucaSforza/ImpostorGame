@@ -781,7 +781,7 @@ root.addEventListener('click', async e => {
     case 'vote': case 'discuss': await change(d => { const game = d.activeGame; if (game?.gameId === 'impostor') game.phase = action; }); resetScrollToTop(); break;
     case 'result': await change(d => { const g = d.activeGame; if (!g || g.gameId !== 'impostor') return; const resolution = resolveVote(g); if (resolution === 'result') { g.phase = 'result'; if (!g.scoreRecorded) { d.players = recordActiveGameResult(d.players, g); g.scoreRecorded = true; } } else if (resolution === 'continue') g.phase = 'discuss'; }); navigator.vibrate?.([30, 40, 30]); resetScrollToTop(); break;
     case 'exit': revealed = false; whoAmIRevealed = false; dialogReturnFocus = captureFocus(root); dialog = 'exit'; editingPlayerId = null; deletingPlayerId = null; photoError = ''; render(); break;
-    case 'home': categoryScreen = false; dialog = null; revealed = false; whoAmIRevealed = false; clearBombExplosionFeedback(); bombExpiryAttemptedGameId = null; screen = 'setup'; location.hash = 'setup'; await change(d => { d.activeGame = null; }); resetScrollToTop(); break;
+    case 'home': categoryScreen = false; dialog = null; revealed = false; whoAmIRevealed = false; clearBombExplosionFeedback(); bombExpiryAttemptedGameId = null; screen = 'setup'; location.hash = 'setup'; await change(d => { d.activeGame = null; if (d.selectedGameId === 'same-wave') d.selectedGameId = 'impostor'; }); resetScrollToTop(); break;
   }
 });
 // Never persist an exposed card: reloads, app switching and history restore conceal it.

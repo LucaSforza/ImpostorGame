@@ -96,3 +96,9 @@ Owner approval needed for merge/public deployment, repository metadata changes, 
 One Node 22 GitHub job passed; a parallel PR job failed the final 320px touch-target check. Local isolated reproduction confirmed that every failed element was detached (`isConnected=false`, `0×0`) after a hash route replaced the root between Playwright lookup and measurement. Actual controls were not undersized. Layout checks now select and measure atomically in one browser task, retain the 44px threshold, require visible controls, and exercise twenty route/viewport transitions. No production behavior changed for this CI fix. New local and CI verification follows.
 
 Local green after CI fix: full offline acceptance (including twenty route/viewport transitions), 148 Vitest tests and diff check passed. Isolated red reproduced at transition 7 with all failing buttons detached. CI rerun requested by pushing the focused test fix; remote result is not yet asserted here.
+
+## Final legacy-exit regression — 2026-10-12
+
+Both Node 22 CI jobs passed the atomic measurement fix (`f143b6d`). A final supported-retired-session check then reproduced `Unknown game: same-wave` on exiting an old Stessa Onda game: inactive setup still selected the removed catalog entry. Home now saves Impostore as the fallback only for that retired selection, keeping every profile and historical statistic. Browser regression first failed against unchanged production; verifies exit, reload, full roster/statistics equality, and no page error after the fix.
+
+Legacy fix green: `npm test` (148), production build, diff check, complete browser regression set and four-game offline acceptance passed. Profiles and historical Stessa Onda statistics compare exactly before/after exit and reload. Final PR checks will cover this follow-up too.

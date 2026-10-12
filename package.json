@@ -11,7 +11,7 @@
     "package:itch": "npm run build:itch && node scripts/package-itch.mjs",
     "test": "vitest run",
     "preview": "vite preview --host 0.0.0.0",
-    "test:browser": "node scripts/browser-regressions.mjs && node scripts/browser-session-regressions.mjs",
+    "test:browser": "node scripts/browser-regressions.mjs && node scripts/browser-session-regressions.mjs && node scripts/browser-legacy-catalog.mjs",
     "qa:launch": "node scripts/qa-launch.mjs",
     "qa:updates": "node scripts/qa-updates.mjs",
     "qa:accessibility": "node scripts/qa-accessibility.mjs",

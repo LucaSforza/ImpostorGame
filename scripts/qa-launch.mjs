@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
 import { chromium } from 'playwright';
 
 const url = process.env.QA_URL || 'http://127.0.0.1:4173/ImpostorGame/';
@@ -27,8 +29,14 @@ const click = async action => { await page.locator(`[data-action="${action}"]`).
 const shot = async name => {
   if (!media) return;
   await mkdir('marketing/screenshots', { recursive: true });
+  await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur());
   await page.screenshot({ path: `marketing/screenshots/${name}.png`, fullPage: true });
 };
+async function checkAccessibility(label) {
+  await page.addScriptTag({ path: require.resolve('axe-core/axe.min.js') });
+  const result = await page.evaluate(() => axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] } }));
+  assert.deepEqual(result.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) })), [], `${label} WCAG scan`);
+}
 const checkLayout = async () => {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'No horizontal page overflow');
   const tiny = await page.locator('button:visible').evaluateAll(buttons => buttons.filter(b => { const r = b.getBoundingClientRect(); return r.height < 44 || r.width < 44; }).map(b => b.textContent.trim()));
@@ -63,6 +71,17 @@ try {
   await click('share');
   assert.match(await page.evaluate(() => window.qaShare.text), /Free/);
   assert.equal(await page.evaluate(() => window.qaShare.url), 'https://lucasforza.github.io/ImpostorGame/');
+  await choose('bomb');
+  await click('share');
+  assert.equal(await page.evaluate(() => window.qaShare.url), 'https://lucasforza.github.io/ImpostorGame/#game/bomb');
+  await click('catalog');
+  await page.evaluate(() => { navigator.share = async () => { throw new DOMException('cancelled', 'AbortError'); }; });
+  await click('share');
+  assert.equal(await page.locator('dialog').count(), 0);
+  await page.evaluate(() => { navigator.share = undefined; Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async value => { window.qaCopied = value; } } }); });
+  await click('share');
+  await page.waitForFunction(() => document.querySelector('.share-status').textContent.includes('Link copied'));
+  assert.equal(await page.evaluate(() => window.qaCopied), 'https://lucasforza.github.io/ImpostorGame/');
   await page.evaluate(() => { navigator.share = undefined; Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new Error('denied'); } } }); });
   await click('share');
   await page.waitForSelector('#share-url');
@@ -106,6 +125,8 @@ try {
   assert.equal(game.gameId, 'impostor');
   await click('reveal');
   await shot('impostore');
+  await checkAccessibility('Impostore reveal');
+  assert.equal(await page.locator('.game-screen').evaluate(e => getComputedStyle(e).animationName), 'none');
   await checkLayout();
   await page.reload();
   await page.waitForSelector('[data-action="reveal"]');
@@ -135,6 +156,7 @@ try {
   await click('start');
   await page.waitForSelector('.bomb-orb');
   await shot('bomba');
+  await checkAccessibility('Bomba live');
   assert.equal(await page.locator('[role="timer"]').count(), 0);
   await page.clock.fastForward(121_000);
   await page.waitForSelector('[data-action="bomb-loser"]');
@@ -145,6 +167,7 @@ try {
 
   await choose('who-am-i'); await click('start');
   await click('who-reveal'); await shot('chi-sono');
+  await checkAccessibility('Chi sono private identities');
   await click('rules'); await page.keyboard.press('Escape');
   assert.equal(await page.locator('[data-action="who-reveal"]').count(), 1, 'Rules conceal identities');
   for (let i = 0; i < 3; i++) { await click('who-reveal'); await click('who-playing'); }
@@ -156,9 +179,11 @@ try {
   await choose('twit');
   await page.selectOption('#twit-rounds', '1');
   await click('start'); await shot('twit');
+  await checkAccessibility('Twit question');
   await click('twit-begin');
   for (let i = 0; i < 3; i++) {
     await click('reveal');
+    if (i === 0) await checkAccessibility('Twit private form');
     await page.fill('#twit-estimate', `${20 + i}`);
     await page.locator('#twit-prediction').selectOption({ index: 1 });
     await page.click('#twit-form button[type="submit"]');
@@ -173,6 +198,7 @@ try {
   await page.waitForSelector('.stats-player-card');
   assert.equal((await snapshot()).players.every(p => p.stats.twit.gamesPlayed === 1), true);
   await click('language');
+  await page.waitForFunction(() => document.documentElement.lang === 'it');
   assert.equal(await page.locator('html').getAttribute('lang'), 'it');
   await page.reload();
   await page.waitForSelector('.stats-player-card');

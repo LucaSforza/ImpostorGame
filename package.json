@@ -12,7 +12,10 @@
     "test": "vitest run",
     "preview": "vite preview --host 0.0.0.0",
     "test:browser": "node scripts/browser-regressions.mjs && node scripts/browser-session-regressions.mjs",
-    "qa:launch": "node scripts/qa-launch.mjs"
+    "qa:launch": "node scripts/qa-launch.mjs",
+    "qa:updates": "node scripts/qa-updates.mjs",
+    "qa:accessibility": "node scripts/qa-accessibility.mjs",
+    "validate:static": "node scripts/validate-static.mjs"
   },
   "devDependencies": {
     "axe-core": "4.14.0",

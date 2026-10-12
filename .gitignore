@@ -5,3 +5,4 @@ dist-itch.zip
 .sites-runtime/
 .env*
 !.env.example
+marketing/recordings/

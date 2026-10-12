@@ -1,1 +1,28 @@
-{"name":"pocket-circle","private":true,"version":"1.0.0","license":"AGPL-3.0-or-later","type":"module","scripts":{"dev":"vite --host 0.0.0.0","build":"tsc --noEmit && vite build","test":"vitest run","preview":"vite preview --host 0.0.0.0"},"devDependencies":{"fake-indexeddb":"^6.2.4","typescript":"~5.9.3","vite":"^7.1.7","vitest":"^4.1.11"}}
+{
+  "name": "pocket-circle",
+  "private": true,
+  "version": "1.0.0",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build",
+    "build:itch": "tsc --noEmit && vite build --mode itch --outDir dist-itch",
+    "package:itch": "npm run build:itch && node scripts/package-itch.mjs",
+    "test": "vitest run",
+    "preview": "vite preview --host 0.0.0.0",
+    "test:browser": "node scripts/browser-regressions.mjs && node scripts/browser-session-regressions.mjs && node scripts/browser-legacy-catalog.mjs",
+    "qa:launch": "node scripts/qa-launch.mjs",
+    "qa:updates": "node scripts/qa-updates.mjs",
+    "qa:accessibility": "node scripts/qa-accessibility.mjs",
+    "validate:static": "node scripts/validate-static.mjs"
+  },
+  "devDependencies": {
+    "axe-core": "4.14.0",
+    "fake-indexeddb": "^6.2.4",
+    "playwright": "1.62.1",
+    "typescript": "~5.9.3",
+    "vite": "^7.1.7",
+    "vitest": "^4.1.11"
+  }
+}

@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Browser acceptance
+        run: |
+          npm run preview -- --host 127.0.0.1 > /tmp/pocket-circle-preview.log 2>&1 &
+          PREVIEW_PID=$!
+          trap 'kill "$PREVIEW_PID"' EXIT
+          npm run test:browser
+          npm run qa:launch
+          npm run qa:accessibility
+          npm run qa:updates
+      - run: npm run package:itch
+      - run: npm run validate:static

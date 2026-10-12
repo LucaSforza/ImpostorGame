@@ -1,0 +1,49 @@
+name: Bug report
+description: Report a problem with Pocket Circle
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Please leave out player names, photos, browser storage, and other private information."
+  - type: input
+    id: game
+    attributes:
+      label: Game or screen
+      placeholder: "For example: Bomba setup"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include the actions that led to the problem.
+      placeholder: "1. Open… 2. Choose… 3. Tap…"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead?
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Browser and device
+      placeholder: "For example: Firefox 132 on Android 15"
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant error message
+      description: Remove names, tokens, URLs with private data, and other sensitive information.
+    validations:
+      required: false

@@ -1,5 +1,5 @@
 import './style.css';
-import { emptyPlayerStats, loadData, saveData, type AppData, type ImpostorStats, type Player, type PlayerStats } from './db';
+import { emptyPlayerStats, loadData, saveData, type AppData, type Player } from './db';
 import { createGame, localizeEntry, maxAttempts, minAttempts, maxImpostors, citizensWin, resolveVote, type ActiveGame, type ImpostorGame } from './game';
 import { assignBombLoser, bombExpired, createBombGame, rematchBomb, resolveBomb, type BombGame } from './bomb';
 import { createSameWaveGame, rematchSameWave, submitSameWavePick, type SameWaveGame } from './same-wave';
@@ -105,7 +105,6 @@ let bombExplosionFeedbackTimer: number | null = null;
 let dialog: 'player' | 'rules' | 'exit' | 'delete' | null = null;
 let chosenAvatar: string = avatars[0][0];
 let draftName = '';
-let draftStats: PlayerStats = emptyPlayerStats();
 let editingPlayerId: string | null = null;
 let deletingPlayerId: string | null = null;
 let photoError = '';
@@ -378,25 +377,7 @@ function playerDialogView(): string {
   const title = editing ? t('player.editTitle') : t('player.newTitle');
   const helper = editing ? t('player.editHelper') : t('player.newHelper');
   const submit = editing ? t('player.saveChanges') : t('player.add');
-  const stats = draftStats.impostor;
-  return `<h2 id="dialog-title">${title}</h2><p class="helper">${helper}</p><form id="player-form"><label for="name">${t('player.nameLabel')}</label><input id="name" name="name" placeholder="${t('player.namePlaceholder')}" value="${escape(draftName)}" maxlength="24" required autocomplete="off"/><span class="field-label">${t('player.avatarLabel')}</span><div class="avatar-upload">${avatarMarkup(chosenAvatar, 'avatar-preview')}<div><label class="upload-label" for="avatar-upload">${t('player.upload')}</label><input id="avatar-upload" type="file" accept="image/*" capture="user"/></div></div><p class="upload-hint">${t('player.photoHint')}</p><button type="button" class="avatar-random" data-action="random-avatar">${t('player.randomAvatar')}</button><div class="avatar-picker">${avatars.map(([id, label], index) => `<button type="button" data-avatar="${id}" aria-label="${t('player.avatar', { index: index + 1, name: label })}" aria-pressed="${id === chosenAvatar}" class="${id === chosenAvatar ? 'chosen' : ''}">${avatarMarkup(id)}</button>`).join('')}</div><fieldset class="stats-editor"><legend>${t('stats.editorTitle')}</legend><p class="stats-helper">${t('stats.editorHelper')}</p><label for="stats-gamesPlayed">${t('stats.gamesPlayed')}</label><input id="stats-gamesPlayed" data-stat="gamesPlayed" type="number" min="0" step="1" value="${stats.gamesPlayed}" required/><label for="stats-citizenWins">${t('stats.citizenWins')}</label><input id="stats-citizenWins" data-stat="citizenWins" type="number" min="0" step="1" value="${stats.citizenWins}" required/><label for="stats-citizenLosses">${t('stats.citizenLosses')}</label><input id="stats-citizenLosses" data-stat="citizenLosses" type="number" min="0" step="1" value="${stats.citizenLosses}" required/><label for="stats-impostorWins">${t('stats.impostorWins')}</label><input id="stats-impostorWins" data-stat="impostorWins" type="number" min="0" step="1" value="${stats.impostorWins}" required/><label for="stats-impostorLosses">${t('stats.impostorLosses')}</label><input id="stats-impostorLosses" data-stat="impostorLosses" type="number" min="0" step="1" value="${stats.impostorLosses}" required/></fieldset><p id="form-error" class="error" role="alert"></p><p class="error upload-error" role="alert">${escape(photoError)}</p><button class="primary" type="submit">${submit} <span>${editing ? '✓' : '＋'}</span></button></form>`;
-}
-
-function readDraftStats(): PlayerStats | null {
-  const keys: (keyof ImpostorStats)[] = ['gamesPlayed', 'citizenWins', 'citizenLosses', 'impostorWins', 'impostorLosses'];
-  const values = structuredClone(draftStats);
-  for (const key of keys) {
-    const input = root.querySelector<HTMLInputElement>(`[data-stat="${key}"]`);
-    const value = Number(input?.value);
-    if (!input || !Number.isSafeInteger(value) || value < 0) return null;
-    values.impostor[key] = value;
-  }
-  const role = values.impostor;
-  const outcomes = role.citizenWins + role.citizenLosses + role.impostorWins + role.impostorLosses;
-  if (role.gamesPlayed !== outcomes) return null;
-  role.wins = role.citizenWins + role.impostorWins;
-  role.losses = role.citizenLosses + role.impostorLosses;
-  return values;
+  return `<h2 id="dialog-title">${title}</h2><p class="helper">${helper}</p><form id="player-form"><label for="name">${t('player.nameLabel')}</label><input id="name" name="name" placeholder="${t('player.namePlaceholder')}" value="${escape(draftName)}" maxlength="24" required autocomplete="off"/><span class="field-label">${t('player.avatarLabel')}</span><div class="avatar-upload">${avatarMarkup(chosenAvatar, 'avatar-preview')}<div><label class="upload-label" for="avatar-upload">${t('player.upload')}</label><input id="avatar-upload" type="file" accept="image/*" capture="user"/></div></div><p class="upload-hint">${t('player.photoHint')}</p><button type="button" class="avatar-random" data-action="random-avatar">${t('player.randomAvatar')}</button><div class="avatar-picker">${avatars.map(([id, label], index) => `<button type="button" data-avatar="${id}" aria-label="${t('player.avatar', { index: index + 1, name: label })}" aria-pressed="${id === chosenAvatar}" class="${id === chosenAvatar ? 'chosen' : ''}">${avatarMarkup(id)}</button>`).join('')}</div><p id="form-error" class="error" role="alert"></p><p class="error upload-error" role="alert">${escape(photoError)}</p><button class="primary" type="submit">${submit} <span>${editing ? '✓' : '＋'}</span></button></form>`;
 }
 
 function deleteDialogView(): string {
@@ -542,8 +523,6 @@ function readAvatarPhoto(file: File): Promise<string> {
 root.addEventListener('input', e => {
   const target = e.target as HTMLInputElement;
   if (target.id === 'name') draftName = target.value;
-  const stat = target.dataset.stat as keyof ImpostorStats | undefined;
-  if (stat && stat in draftStats.impostor) draftStats.impostor[stat] = Number(target.value) || 0;
 });
 root.addEventListener('change', e => {
   const target = e.target as HTMLInputElement | HTMLSelectElement;
@@ -591,18 +570,13 @@ root.addEventListener('submit', async e => {
     root.querySelector('#form-error')!.textContent = t('error.uniqueName');
     return;
   }
-  const stats = readDraftStats();
-  if (!stats) {
-    root.querySelector('#form-error')!.textContent = t('error.invalidStats');
-    return;
-  }
   const playerId = editingPlayerId;
   await change(d => {
     if (playerId) {
       const player = d.players.find(p => p.id === playerId);
-      if (player) { player.name = name; player.avatar = chosenAvatar; player.stats = stats; }
+      if (player) { player.name = name; player.avatar = chosenAvatar; }
     } else {
-      const player = { id: crypto.randomUUID(), name, avatar: chosenAvatar, createdAt: Date.now(), stats };
+      const player = { id: crypto.randomUUID(), name, avatar: chosenAvatar, createdAt: Date.now(), stats: emptyPlayerStats() };
       d.players.push(player);
       if (d.selectedIds.length < 20) d.selectedIds.push(player.id);
     }
@@ -656,7 +630,6 @@ root.addEventListener('click', async e => {
     editingPlayerId = player;
     deletingPlayerId = null;
     draftName = current.name;
-    draftStats = structuredClone(current.stats ?? emptyPlayerStats());
     chosenAvatar = isPhotoAvatar(current.avatar) ? current.avatar : resolveAvatar(current.avatar);
     photoError = '';
     dialog = 'player';
@@ -685,7 +658,7 @@ root.addEventListener('click', async e => {
     case 'stats': screen = 'stats'; categoryScreen = false; location.hash = 'stats'; render(true); break;
     case 'language': revealed = false; whoAmIRevealed = false; await change(d => { d.language = d.language === 'it' ? 'en' : 'it'; }); break;
     case 'rules': revealed = false; dialog = 'rules'; render(); break;
-    case 'add': draftName = ''; draftStats = emptyPlayerStats(); editingPlayerId = null; deletingPlayerId = null; photoError = ''; chosenAvatar = avatars[Math.floor(Math.random() * avatars.length)][0]; dialog = 'player'; render(); break;
+    case 'add': draftName = ''; editingPlayerId = null; deletingPlayerId = null; photoError = ''; chosenAvatar = avatars[Math.floor(Math.random() * avatars.length)][0]; dialog = 'player'; render(); break;
     case 'close': dialog = null; editingPlayerId = null; deletingPlayerId = null; photoError = ''; render(); break;
     case 'confirm-delete': {
       const playerId = deletingPlayerId;
@@ -772,6 +745,10 @@ async function init() {
   try {
     const saved = await loadData<ActiveGame>();
     if (saved) data = saved;
+    if (!data.activeGame && data.selectedGameId === 'same-wave') {
+      data.selectedGameId = 'impostor';
+      await saveData(data);
+    }
     bombExpiryAttemptedGameId = null;
     clearBombExplosionFeedback();
     if (data.activeGame) {

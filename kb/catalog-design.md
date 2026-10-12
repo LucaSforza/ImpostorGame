@@ -4,7 +4,7 @@ Pocket Circle is a local-first catalog of pass-and-play party games. One phone i
 
 ## Product structure
 
-The landing screen is a game catalog. Each catalog entry has stable metadata, supported player limits, localized copy, and a setup renderer. Selecting an entry opens that game's setup while reusing the same saved player profiles. The header exposes a separate statistics page at `#stats`; returning to the catalog uses `#catalog`.
+The landing screen is a game catalog with four available games. Each catalog entry has stable metadata, supported player limits, localized copy, and a setup renderer. Selecting an entry opens that game's setup while reusing the same saved player profiles. The header exposes a separate statistics page at `#stats`; returning to the catalog uses `#catalog`.
 
 `GameCatalog` is the only registry of available games. It owns immutable `GameDefinition` values and resolves them by stable `GameId`. Runtime sessions are a discriminated `ActiveGame` union, so each game keeps only its own rules while persistence and rendering can exhaustively dispatch on `gameId`.
 
@@ -89,12 +89,6 @@ Two to twenty players choose a bilingual topic category such as technology and g
 
 Bomb content is data-driven. Each `BombPrompt` has stable ID, category ID, and Italian/English topic; standard topics also have bilingual examples for optional inspiration. The separate Hot 18+ category contains 150 broad prompts, has no example answers, and joins a round only when explicitly selected. Runtime never downloads content.
 
-### Stessa Onda
-
-Three to twenty players receive same light-hearted prompt with four localized choices. Phone passes privately; each player selects one answer without seeing earlier choices. Result groups players by answer. Every player in a largest group of at least two wins; tied largest groups all win. If every choice is unique, nobody wins. This creates a quick social compatibility game without moderator or subjective scoring.
-
-Content is data-driven through stable bilingual `SameWavePrompt` records. A rematch keeps participants and selects a different prompt when possible.
-
 ### Chi sono?
 
 Three to twenty players receive unique bilingual identities drawn from people, fictional characters, and objects. During private pass-the-phone reveal, each participant sees every identity except their own. Players then rotate through yes/no questions. Current player may buzz once, say answer aloud, and let group mark it correct or wrong after app reveals identity. Correct guess wins immediately; wrong guess eliminates player; all wrong produces no winner. Rematch keeps participants and excludes prior identities when deck has enough alternatives.
@@ -109,11 +103,11 @@ Three to twenty players estimate an exact numerical answer, then privately predi
 
 - catalog-wide games played, wins, losses, and win rate;
 - one card per saved player with overall totals;
-- per-game played/won/lost values for Impostore, Bomba, Stessa Onda, Chi sono?, and Twit;
+- per-game played/won/lost values for available games: Impostore, Bomba, Chi sono?, and Twit;
 - Impostore role split for migrated and newly recorded results;
 - empty states for new profiles and an entirely empty roster.
 
-Each completed session records once using `scoreRecorded`. Abandoned sessions never affect statistics. Statistics remain editable through player editing only if all invariants hold: non-negative safe integers and wins plus losses equals games played for every game.
+Each completed session records once using `scoreRecorded`. Abandoned sessions never affect statistics. Player creation and editing do not expose manual statistics controls; editing a profile preserves its saved statistics. Historical Stessa Onda statistics and active sessions remain in local data for compatibility, but the game is no longer available in catalog or new-game setup.
 
 ## Visual system: Night Arcade
 
@@ -153,7 +147,6 @@ Every help variant is complete in Italian and English, has a context-specific ti
 
 - Impostore: violet identifier.
 - Bomba: coral identifier, limited to bomb graphic and urgent state.
-- Stessa Onda: cyan-violet identifier.
 - Chi sono?: amber-violet identifier.
 - Twit: violet-cyan target and numerical artwork.
 

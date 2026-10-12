@@ -85,7 +85,7 @@ Automated gates:
 
 Browser QA at 390 × 844 and 320 × 740:
 
-- catalog shows five usable game cards, Pocket Circle brand, privacy promise, no horizontal overflow;
+- catalog shows four usable game cards, Pocket Circle brand, privacy promise, no horizontal overflow;
 - every route follows the normative Night Arcade tokens: deep-plum shell, warm-white readable copy, lime primary action/focus, common cards and controls; game identity never replaces the full-page palette;
 - mobile copy remains at least 14 px for body text and 12 px for metadata, tap targets remain at least 44 × 44 px, and no essential copy is low-contrast or laid over busy artwork;
 - header remains usable without clipping at 320 px: readable brand, icon navigation with accessible names, and no horizontal page scrollbar;
@@ -98,6 +98,14 @@ Browser QA at 390 × 844 and 320 × 740:
 - verify keyboard focus, button labels, dialogs, reduced motion, empty roster, empty statistics, long names, and local photo avatars;
 - inspect network after load: no gameplay, tracking, advertising, or content requests;
 - test deployed GitHub Pages URL after push and confirm workflow completion.
+
+## Stessa Onda removal and profile form — 2026-10-12
+
+- Baseline before production edits: `npm test` passed (16 files, 131 tests). Catalog regression was then added and failed in two places against unchanged code: catalog still exposed `same-wave`, and registry accepted it.
+- Catalog regression now expects four available games. Setup no longer permits selecting Stessa Onda, and a legacy selected-game value resets to Impostore when no session is active. Existing active Stessa Onda sessions and saved historical statistics remain supported.
+- Player dialog no longer renders editable statistics. New profiles start with zero statistics; editing name/avatar leaves saved counters unchanged.
+- Final automated checks passed: `npm test` (16 files, 131 tests), `npm run build`, and `git diff --check`.
+- Browser QA not performed: local dev server could not bind in sandbox (`listen EPERM`).
 
 ## Previous Impostore validation
 

@@ -1,5 +1,7 @@
 node_modules/
 dist/
+dist-itch/
+dist-itch.zip
 .sites-runtime/
 .env*
 !.env.example

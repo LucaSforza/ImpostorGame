@@ -8,7 +8,7 @@ The multi-game target keeps one shell and one persisted snapshot. `GameCatalog` 
 
 - `src/main.ts` owns the application shell, screen routing, rendering, and events. `init()` loads the local snapshot; every mutation goes through `change()`, which clones state, saves it, and then re-renders. It delegates game rules to pure game modules.
 - `src/catalog.ts` owns `GameCatalog`, `GameId`, and immutable localized catalog metadata.
-- `src/router.ts` parses the supported `#catalog`, `#setup`, and `#stats` routes with a catalog fallback.
+- `src/router.ts` parses the supported `#catalog`, `#setup`, `#stats`, and available `#game/<id>` routes with a catalog fallback.
 - `src/game.ts` owns the `Game` model, random word selection, role assignment, localized word/hint/category projection, voting-session bounds, one-candidate vote resolution, candidate elimination, progressive impostor discovery, the crew win condition, and pure player-stat updates for completed games.
 - `src/bomb.ts` owns Bomb prompts, deadline creation, expiry, group adjudication, and result projection.
 - `src/same-wave.ts` owns Stessa Onda prompts, private selections, grouping, and winner resolution.
@@ -35,3 +35,7 @@ The reveal card is controlled by the module variable `revealed`, which is not pa
 At startup, `loadData()` reads the snapshot. If one exists, the app restores players, settings, and the active game; otherwise it saves the initial state. An IndexedDB error leaves the app unavailable and shows a message asking the user to enable site data. All persistence is local to the browser and the app's origin; there is no server-side database.
 
 Twit stores the entire match deck and answers per round. `question` opens public read-aloud, `answering` advances private turns, `round-result` reveals one completed round, and `result` records the completed match. Round points and totals are derived from answers rather than persisted twice. Its reveal flag reuses transient `revealed`; no unfinished draft is saved.
+
+## Launch support modules
+
+`src/share.ts` builds canonical public links and handles native share, cancellation and clipboard fallback. `src/focus.ts` captures stable control identity and input selection for re-rendering. `src/offline.ts` registers the production worker; the Vite build plugin in `scripts/offline-build.ts` generates manifest and content-versioned precache and checks emitted paths. These modules add no runtime dependency or persisted schema field. [Offline details](offline.md), [launch progress](../docs/launch-readiness.md), and [naming/provenance decisions](../docs/naming-and-provenance.md) describe guarantees and remaining manual checks.

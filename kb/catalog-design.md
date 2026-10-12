@@ -1,6 +1,6 @@
 # Pocket Circle product design
 
-Pocket Circle is a local-first catalog of pass-and-play party games. One phone is shared by friends; profiles, settings, sessions, and statistics stay in that browser. The app contains no advertising, analytics, accounts, or runtime network calls.
+Pocket Circle is a local-first catalog of pass-and-play party games. One phone is shared by friends; profiles, settings, sessions, and statistics stay in that browser. The app contains no advertising, analytics, accounts, or gameplay network services. Offline installation and updates download static application assets.
 
 ## Product structure
 
@@ -62,7 +62,7 @@ classDiagram
   class WhoAmIGame
   class TwitGame
 
-  GameCatalog "1" o-- "5" GameDefinition : offers
+  GameCatalog "1" o-- "4" GameDefinition : offers
   AppData "1" o-- "0..*" Player : reusable profiles
   Player "1" *-- "1" PlayerStats : owns
   PlayerStats "1" *-- "5" GameStats : per game
@@ -157,5 +157,13 @@ These identifiers may decorate an eyebrow, icon, or card edge. Lime remains glob
 - Existing IndexedDB snapshots migrate in memory: current counters become Impostore statistics, current settings become Impostore settings, and current active games receive `gameId: "impostor"`.
 - Physical database name, store, and key stay unchanged to preserve installed data despite new brand.
 - GitHub Pages base path stays `/ImpostorGame/` until repository itself is renamed.
-- No backend, multiplayer networking, cloud sync, speech recognition, answer validation, user accounts, ads, analytics, or install-time content download.
+- No backend, multiplayer networking, cloud sync, speech recognition, answer validation, user accounts, ads, analytics, or remotely supplied gameplay content. Offline caching downloads the shipped static build.
 - Desktop and mobile browsers use same responsive UI; primary QA viewports remain 390 × 844 and 320 × 740.
+
+## Public launch additions
+
+The catalog explicitly presents four games, with immediate setup shortcuts, player limits, one-phone instructions, and the free/no-ads/no-accounts/no-subscriptions/no-tracking promise. Impostore setup uses one game cover; the older duplicate hero is gone. Catalog, setup and completed results provide voluntary sharing; live rounds have no sharing prompt. Native share includes localized text, clipboard fallback copies only the canonical URL, and denied clipboard exposes a selectable link. Profiles, photos, answers and sessions never appear in URLs.
+
+`#game/impostor`, `#game/bomb`, `#game/who-am-i`, and `#game/twit` select setup. Active sessions take priority on startup and history navigation; no link abandons a round. Older routes remain supported. Keyboard focus survives persisted changes, avatar choices and dialog rerenders; Escape returns to the opener and route/phase changes focus the heading. Help and exit conceal both reveal flags. Hide-and-pass conceals secrets synchronously before waiting for storage. Supported older session rules remain intact on startup.
+
+Home-screen and offline guidance is optional expandable catalog content. Readiness appears only after service-worker installation succeeds; first visit requires a network connection. See [offline behavior](offline.md).

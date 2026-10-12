@@ -66,7 +66,7 @@
 
 Automated gates:
 
-- catalog resolves exactly five stable game IDs and rejects unknown IDs;
+- catalog resolves exactly four available stable game IDs and rejects unknown IDs; saved retired Stessa Onda sessions remain supported;
 - legacy IndexedDB snapshot migrates without losing players, photos, selections, Impostore settings, active game, or counters;
 - invalid new snapshots are rejected; failed writes preserve previous snapshot;
 - shared player selection is visible to every game setup;
@@ -170,3 +170,12 @@ Browser-local data belongs to its origin. The development preview and public Git
 - Regression test first failed against the unfixed stylesheet, then passed after constraining direct live-card artwork to normal flow with a 320 px height limit.
 - Browser QA after fix showed heading/helper and reveal action visible, artwork contained in the card at `320 px`, no horizontal overflow at the active `673 × 883` viewport, private identities preserved, turn rotation, buzz identity reveal, and wrong-answer elimination.
 - Final gates passed: `npm test` reports 13 files and 98 tests; `npm run build` and `git diff --check` pass. Exact 390 × 844/320 × 740 viewport checks and public GitHub Pages remain unverified in this post-fix run.
+
+## Public launch readiness — 2026-10-12
+
+- Original baseline: 16 files / 132 tests and build passed after `npm ci`. Final counts/gates are recorded in [launch progress](../docs/launch-readiness.md).
+- Browser regressions reproduced lost avatar/opener/saved-selection focus, supported active rules changing 3→2, secret persisting during delayed save, category action under 44px and invalid generic-div ARIA. Fixed at UI/startup layer without changing schema or game engines.
+- Production offline suite passed all four completed games, roster/language/session persistence, exactly-once scores, hash history, safe shared links, native/copy/manual sharing, secret privacy, reduced motion, mobile/desktop layout and touch targets. Static worker caches no profiles/photos/answers.
+- Worker update fixture passed waiting activation until old clients close, cache cleanup, offline new version with full snapshot unchanged and failed-download recovery. `Vary: Origin` module mismatch was reproduced by real offline reload and corrected for public precached assets.
+- Axe WCAG-tag scans passed catalog, all setups, stats, dialogs and key gameplay states. Network inspection: no gameplay API/third-party requests, console/page errors absent. Actual screenshots in [marketing](../marketing/README.md).
+- Not performed: physical iOS/Android installation, manual screen-reader session, public deployment, external platform preview delivery or actual itch.io upload. These require owner smoke checks after approval; cache eviction/first-ever offline launch remain inherent limitations.

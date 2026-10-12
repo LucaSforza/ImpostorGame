@@ -1,0 +1,20 @@
+{
+  "checks": [
+    "Production cache ready",
+    "Offline reload and all four completed games",
+    "Roster, locale, active session and exactly-once statistics persistence",
+    "Hash history and active-session precedence",
+    "Native/manual sharing",
+    "Keyboard privacy/help",
+    "390/320/1280 layouts and 44px button targets",
+    "No third-party/gameplay API requests"
+  ],
+  "errors": [],
+  "syntheticPlayers": [
+    "QA Ada",
+    "QA Bea",
+    "QA Cy"
+  ],
+  "url": "http://127.0.0.1:4173/ImpostorGame/",
+  "capturedAt": "2026-10-12T20:01:33.563Z"
+}

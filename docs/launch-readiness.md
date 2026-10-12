@@ -80,6 +80,13 @@ Next: final clean install/tests/build, final asset/itch checks and commits, bran
 
 ## Delivery status
 
-Core commit: `4f22134`. Documentation/media/QA commit and PR creation follow this checkpoint. Generated `dist-itch.zip` and `marketing/recordings/pocket-circle-demo.webm` stay local and can be rebuilt. Source, screenshots, preview PNG, tests, guidance and drafts are committed; no user data is included.
+Commits: `4f22134` core implementation; `e614965` documentation/media; `391dbf9` final accessibility/validation. PR: https://github.com/LucaSforza/ImpostorGame/pull/1 (open, not merged). Generated `dist-itch.zip` and `marketing/recordings/pocket-circle-demo.webm` stay local and can be rebuilt. Source, screenshots, preview PNG, tests, guidance and drafts are committed; no user data is included.
 
 Owner approval needed for merge/public deployment, repository metadata changes, itch.io publication, and promotional posting. Keep current URL; future rename/domain migration needs its own approval. Prioritized follow-ups: physical install/screen-reader/preview smoke checks; historic asset provenance ledger; optional user-controlled backup before any origin migration; optional QR/batch roster only if requested by players.
+
+## Handoff
+
+- Branch pushed: `codex/public-launch`. PR #1 created through the existing authenticated GitHub CLI after the connector returned 403 (integration lacked PR-write permission). PR attached to the Codex chat. No automatic merge/deploy.
+- Final update-lifecycle check passed against completed build. Existing public Pages URL was read successfully (HTTP 200); new release is intentionally not deployed.
+- `dist-itch.zip` rebuilt from clean committed code `391dbf9`; bundled SOURCE.md points to that exact corresponding source. Owner upload instructions in `marketing/itch-io.md`.
+- Remote CI status must be read from the PR; local execution evidence above is independent of CI. Final handoff records any completed CI separately.

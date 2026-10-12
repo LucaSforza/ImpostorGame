@@ -5,6 +5,7 @@
 `src/i18n.ts` is the only UI localization boundary.
 
 - `Locale` is the supported locale union (`it` | `en`).
+- Fresh installs start in English. The selected locale is saved in the local snapshot and restored when the app is reopened; changing language does not depend on player profile selection.
 - `MessageKey` identifies UI copy; components call `translate(locale, key, params)` through the `t()` helper in `src/main.ts`.
 - `CategoryId` is language-neutral (`all` plus the 16 selectable category IDs). `WordEntry.category` stores one selectable ID. `GameSettings.category` stores `all`, one selectable ID, or a non-empty array of selectable IDs; it never stores display labels. `all` draws from the 15 standard categories; `spicy_18` requires explicit selection.
 - `categoryLabel(locale, id)` produces the visible category label.

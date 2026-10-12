@@ -62,6 +62,15 @@ describe("local game snapshot", () => {
     await expect(loadData<null>()).resolves.toEqual(second);
   });
 
+  it("remembers selected language when player returns", async () => {
+    const data: AppData<null> = {
+      players: [], selectedIds: [], selectedGameId: "impostor", settings: settings(), language: "it", activeGame: null,
+    };
+    await saveData(data);
+
+    await expect(loadData<null>()).resolves.toMatchObject({ language: "it" });
+  });
+
   it("keeps the prior snapshot when a value cannot be cloned", async () => {
     const existing: AppData<null> = {
       players: [],

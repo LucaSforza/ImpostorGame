@@ -88,7 +88,7 @@ const legacyAvatarMap: Record<string, AvatarId> = {
 let data: AppData<ActiveGame> = {
   players: [], selectedIds: [], selectedGameId: 'impostor',
   settings: { impostor: { impostors: 1, maxAttempts: 1, category: 'all' }, bomb: { category: 'all' }, sameWave: { category: 'all' }, whoAmI: { category: 'all' }, twit: { rounds: 5 } },
-  activeGame: null, language: 'it',
+  activeGame: null, language: 'en',
 };
 let revealed = false;
 let whoAmIRevealed = false;

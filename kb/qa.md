@@ -107,6 +107,11 @@ Browser QA at 390 × 844 and 320 × 740:
 - Final automated checks passed: `npm test` (16 files, 131 tests), `npm run build`, and `git diff --check`.
 - Browser QA not performed: local dev server could not bind in sandbox (`listen EPERM`).
 
+## Default language — 2026-10-12
+
+- Fresh app state now starts in English. Saved snapshots continue loading their selected locale, so Italian users keep Italian when reopening the app.
+- IndexedDB regression confirms selected Italian locale survives save/load. Full suite, build, and diff check pass.
+
 ## Previous Impostore validation
 
 Validated in the Codex in-app browser using smartphone viewport overrides of 390 × 844 and 320 × 740.

@@ -90,3 +90,9 @@ Owner approval needed for merge/public deployment, repository metadata changes, 
 - Final update-lifecycle check passed against completed build. Existing public Pages URL was read successfully (HTTP 200); new release is intentionally not deployed.
 - `dist-itch.zip` rebuilt from clean committed code `391dbf9`; bundled SOURCE.md points to that exact corresponding source. Owner upload instructions in `marketing/itch-io.md`.
 - Remote CI status must be read from the PR; local execution evidence above is independent of CI. Final handoff records any completed CI separately.
+
+## CI follow-up — 2026-10-12
+
+One Node 22 GitHub job passed; a parallel PR job failed the final 320px touch-target check. Local isolated reproduction confirmed that every failed element was detached (`isConnected=false`, `0×0`) after a hash route replaced the root between Playwright lookup and measurement. Actual controls were not undersized. Layout checks now select and measure atomically in one browser task, retain the 44px threshold, require visible controls, and exercise twenty route/viewport transitions. No production behavior changed for this CI fix. New local and CI verification follows.
+
+Local green after CI fix: full offline acceptance (including twenty route/viewport transitions), 148 Vitest tests and diff check passed. Isolated red reproduced at transition 7 with all failing buttons detached. CI rerun requested by pushing the focused test fix; remote result is not yet asserted here.

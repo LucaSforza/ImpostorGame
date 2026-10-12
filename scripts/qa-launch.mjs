@@ -38,10 +38,23 @@ async function checkAccessibility(label) {
   assert.deepEqual(result.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) })), [], `${label} WCAG scan`);
 }
 const checkLayout = async () => {
-  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'No horizontal page overflow');
-  const tiny = await page.locator('button:visible').evaluateAll(buttons => buttons.filter(b => { const r = b.getBoundingClientRect(); return r.height < 44 || r.width < 44; }).map(b => b.textContent.trim()));
-  assert.deepEqual(tiny, [], 'Visible buttons need 44px targets');
+  // Hash navigation replaces the root; select and measure in one task to avoid detached handles.
+  const layout = await page.evaluate(() => {
+    const targets = [...document.querySelectorAll('button')].map(button => {
+      const rect = button.getBoundingClientRect();
+      return { text: button.textContent.trim(), width: rect.width, height: rect.height, visibility: getComputedStyle(button).visibility };
+    }).filter(button => button.width > 0 && button.height > 0 && button.visibility !== 'hidden');
+    return {
+      overflow: document.documentElement.scrollWidth > innerWidth,
+      count: targets.length,
+      tiny: targets.filter(button => button.width < 44 || button.height < 44),
+    };
+  });
+  assert.equal(layout.overflow, false, 'No horizontal page overflow');
+  assert.ok(layout.count > 0, 'App must expose visible buttons during layout checks');
+  assert.deepEqual(layout.tiny, [], 'Visible buttons need 44px targets');
 };
+
 async function choose(game) {
   await page.goto(`${url}#game/${game}`);
   await page.waitForSelector('[data-action="start"]');
@@ -207,6 +220,14 @@ try {
   await page.setViewportSize({ width: 320, height: 740 });
   await checkLayout();
   for (const id of ['impostor', 'bomb', 'who-am-i', 'twit']) { await choose(id); await checkLayout(); }
+  // Exercise repeated route replacements and responsive reflows at the former CI race boundary.
+  for (let i = 0; i < 20; i++) {
+    await page.goto(`${url}#stats`);
+    await page.waitForSelector('.stats-screen');
+    await click('catalog');
+    await page.setViewportSize({ width: i % 2 ? 390 : 320, height: 740 });
+    await checkLayout();
+  }
   assert.equal(requests.some(r => !r.url.startsWith(new URL(url).origin)), false, 'No third-party requests');
   assert.equal(requests.some(r => ['fetch', 'xhr', 'websocket', 'eventsource'].includes(r.type)), false, 'No gameplay API requests');
   assert.deepEqual(errors, []);
